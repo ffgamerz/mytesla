@@ -3,6 +3,7 @@ import teslaModels from '../data/teslaModels';
 import LocationRate from './LocationRate';
 import SavePlan from './SavePlan';
 import TeslaPullButton from './TeslaPullButton';
+import TeslaMap from './TeslaMap';
 import { useAuth } from '../context/AuthContext';
 import { getUserSettings } from '../../supabase/client';
 import {
@@ -348,6 +349,12 @@ function ChargingCalculator({ onNavigateSettings }) {
                     </div>
                 </div>
             </div>
+
+            {/* Tesla Location Map */}
+            <TeslaMap
+                latitude={teslaCoordinate?.lat}
+                longitude={teslaCoordinate?.lng}
+            />
 
             {/* Schedule Card */}
             <div className="card-custom">

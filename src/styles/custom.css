@@ -1521,6 +1521,59 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     font-size: 20px;
 }
 
+/* ---------- Tesla Location Map ---------- */
+.tesla-map-container {
+    width: 100%;
+    height: 160px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--bg-input-border);
+    z-index: 0;
+}
+
+.tesla-map-container .leaflet-pane {
+    z-index: 1;
+}
+
+.tesla-map-container .leaflet-control-zoom a {
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-color: var(--bg-input-border);
+}
+
+.tesla-map-container .leaflet-control-zoom a:hover {
+    background: var(--bg-input);
+}
+
+.tesla-map-coords {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+.tesla-map-pin {
+    font-size: 16px;
+    color: var(--accent-blue);
+}
+
+.tesla-map-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px 16px;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.tesla-map-empty span:first-child {
+    font-size: 20px;
+}
+
 /* Range indicator in battery markers */
 .range-indicator {
     color: var(--accent-green);
