@@ -76,24 +76,6 @@ function ChargingCalculator({ onNavigateSettings }) {
         })();
     }, [user]);
 
-    // On page load, detect phone GPS to auto-select nearby location
-    useEffect(() => {
-        if (!user) return;
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    setTeslaCoordinate({ lat, lng });
-                },
-                () => {
-                    // GPS not available, silently ignore
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        }
-    }, [user]);
-
     // Energy needed (live preview)
     const energyNeeded = calcEnergyNeeded({
         batteryCapacity: selectedModel.batteryCapacity,

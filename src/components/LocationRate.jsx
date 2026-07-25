@@ -87,7 +87,40 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
         }
     }, [user]);
 
-    // Auto-detect location from Tesla coordinates
+    // On load (after locations ready), detect phone GPS and auto-select nearest
+    useEffect(() => {
+        if (!dbLocations.length || !user) return;
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    // Check if any saved location is nearby
+                    let nearest = null;
+                    let nearestDist = Infinity;
+                    for (const loc of dbLocations) {
+                        if (loc.latitude && loc.longitude) {
+                            const dist = calcDistance(lat, lng, loc.latitude, loc.longitude);
+                            if (dist < nearestDist) {
+                                nearestDist = dist;
+                                nearest = loc;
+                            }
+                        }
+                    }
+
+                    if (nearest && nearestDist < 100 && selectedLocation?.db_id !== nearest.id) {
+                        onLocationChange(formatLoc(nearest));
+                    }
+                },
+                () => { /* GPS failed */ },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+    }, [dbLocations.length, user]);
+
+    // Auto-detect location from Tesla coordinates (only when pulled)
     useEffect(() => {
         if (!teslaCoordinate || !dbLocations.length) return;
 
