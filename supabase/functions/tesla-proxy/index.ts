@@ -164,15 +164,15 @@ async function handleVehicleData(req: Request): Promise<Response> {
     await d.from('tesla_user_settings').update({ tesla_last_sync: new Date().toISOString() }).eq('id', user_id);
 
     return new Response(JSON.stringify({
-        battery_level: cs.battery_level, battery_range: cs.battery_range,
-        estimated_range: cs.est_battery_range, charge_state: cs.charging_state,
-        is_charging: cs.charging_state === 'Charging', charge_power: cs.charge_power,
-        charge_voltage: cs.charge_actual_voltage, charge_amps: cs.charge_actual_amps,
-        odometer: r.odometer, locked: vs.locked, sentry_mode: vs.sentry_mode,
-        inside_temp: cl.inside_temp, outside_temp: cl.outside_temp,
-        latitude: ds.latitude, longitude: ds.longitude,
-        model: vc.model, trim: vc.trim_badging,
-        vin: r.vin, display_name: r.display_name,
+        battery_level: cs.battery_level ?? null, battery_range: cs.battery_range ?? null,
+        estimated_range: cs.est_battery_range ?? null, charge_state: cs.charging_state ?? null,
+        is_charging: cs.charging_state === 'Charging', charge_power: cs.charge_power ?? null,
+        charge_voltage: cs.charge_actual_voltage ?? null, charge_amps: cs.charge_actual_amps ?? null,
+        odometer: r.odometer ?? null, locked: vs.locked ?? null, sentry_mode: vs.sentry_mode ?? null,
+        inside_temp: cl.inside_temp ?? null, outside_temp: cl.outside_temp ?? null,
+        latitude: ds.latitude ?? null, longitude: ds.longitude ?? null,
+        model: vc.model ?? null, trim: vc.trim_badging ?? null,
+        vin: r.vin ?? null, display_name: r.display_name ?? null,
         timestamp: new Date().toISOString(),
     }), { status: 200, headers: cors() });
 }
