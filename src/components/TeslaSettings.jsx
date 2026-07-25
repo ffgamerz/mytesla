@@ -154,18 +154,6 @@ function TeslaSettings({ onBack, initialMessage }) {
                     <span className="tesla-info-label">Last Sync</span>
                     <span className="tesla-info-value">{formatDate(lastSync)}</span>
                 </div>
-                {isConnected && (
-                    <div className="hidden-btn-area" onClick={() => setShowDisconnect(!showDisconnect)}>
-                        <span className="material-symbols-outlined hidden-btn-icon">more_horiz</span>
-                        <span className="hidden-btn-label">Tap for options</span>
-                    </div>
-                )}
-                {isConnected && showDisconnect && (
-                    <button className="btn-danger mt-2" onClick={handleDisconnect}>
-                        <span className="material-symbols-outlined">link_off</span>
-                        Disconnect Tesla
-                    </button>
-                )}
             </div>
 
             <div className="card-custom">
@@ -180,7 +168,20 @@ function TeslaSettings({ onBack, initialMessage }) {
                         <span className="material-symbols-outlined">directions_car</span>
                         Connect with Tesla
                     </button>
-                ) : null}
+                ) : (
+                    <>
+                        <div className="hidden-btn-area" onClick={() => setShowDisconnect(!showDisconnect)}>
+                            <span className="material-symbols-outlined hidden-btn-icon">more_horiz</span>
+                            <span className="hidden-btn-label">Tap for options</span>
+                        </div>
+                        {showDisconnect && (
+                            <button className="btn-danger" onClick={handleDisconnect}>
+                                <span className="material-symbols-outlined">link_off</span>
+                                Disconnect Tesla
+                            </button>
+                        )}
+                    </>
+                )}
             </div>
 
             {/* VIN Input - show when connected */}
