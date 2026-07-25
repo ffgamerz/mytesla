@@ -1498,6 +1498,18 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     transform: scale(0.98);
 }
 
+.tesla-pull-btn.cooldown {
+    border-color: var(--danger);
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--danger);
+    border-style: solid;
+}
+
+.tesla-pull-btn.cooldown:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: var(--danger);
+}
+
 .tesla-pull-btn span {
     font-size: 18px;
 }

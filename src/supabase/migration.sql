@@ -118,6 +118,52 @@ CREATE POLICY "Users can delete own history"
     ON tesla_charging_history FOR DELETE
     USING (auth.uid() = user_id);
 
+-- 4. Tesla Vehicle Data (pulled from Tesla API, cached in DB)
+CREATE TABLE IF NOT EXISTS tesla_vehicle_data (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    battery_level INT,
+    battery_range DECIMAL(8,2),
+    estimated_range DECIMAL(8,2),
+    is_charging BOOLEAN DEFAULT false,
+    charge_power DECIMAL(8,2),
+    charge_voltage INT,
+    charge_amps DECIMAL(5,1),
+    odometer DECIMAL(10,2),
+    locked BOOLEAN,
+    sentry_mode BOOLEAN,
+    inside_temp DECIMAL(5,1),
+    outside_temp DECIMAL(5,1),
+    latitude DECIMAL(10,7),
+    longitude DECIMAL(10,7),
+    model TEXT,
+    trim TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tesla_vehicle_data_user_created ON tesla_vehicle_data(user_id, created_at DESC);
+
+ALTER TABLE tesla_vehicle_data ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own vehicle data"
+    ON tesla_vehicle_data FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own vehicle data"
+    ON tesla_vehicle_data FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- 5. Add pull_frequency_minutes to tesla_user_settings
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'tesla_user_settings') THEN
+        BEGIN
+            ALTER TABLE tesla_user_settings ADD COLUMN IF NOT EXISTS pull_frequency_minutes INT NOT NULL DEFAULT 15;
+        EXCEPTION WHEN duplicate_column THEN NULL;
+        END;
+    END IF;
+END $$;
+
 -- ==========================================
 -- AUTO-UPDATE updated_at TRIGGER
 -- ==========================================

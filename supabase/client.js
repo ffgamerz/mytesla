@@ -219,4 +219,93 @@ export async function disconnectTesla(userId) {
     return data;
 }
 
+/**
+ * Save Tesla vehicle data pulled from API to database
+ */
+export async function saveTeslaVehicleData(userId, data) {
+    const { error } = await supabase
+        .from('tesla_vehicle_data')
+        .insert({
+            user_id: userId,
+            battery_level: data.battery_level,
+            battery_range: data.battery_range,
+            estimated_range: data.estimated_range,
+            is_charging: data.is_charging,
+            charge_power: data.charge_power,
+            charge_voltage: data.charge_voltage,
+            charge_amps: data.charge_amps,
+            odometer: data.odometer,
+            locked: data.locked,
+            sentry_mode: data.sentry_mode,
+            inside_temp: data.inside_temp,
+            outside_temp: data.outside_temp,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            model: data.model,
+            trim: data.trim,
+        });
+
+    if (error) throw error;
+}
+
+/**
+ * Get the latest Tesla vehicle data from the database for a user
+ */
+export async function getLatestTeslaData(userId) {
+    const { data, error } = await supabase
+        .from('tesla_vehicle_data')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (error && error.code === 'PGRST116') return null;
+    if (error) throw error;
+    return data;
+}
+
+/**
+ * Get the timestamp of the last pull for a user
+ */
+export async function getLastTeslaPullTime(userId) {
+    const data = await getLatestTeslaData(userId);
+    return data ? new Date(data.created_at) : null;
+}
+
+/**
+ * Get pull frequency setting for a user (default 15 min)
+ */
+export async function getPullFrequency(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('tesla_user_settings')
+            .select('pull_frequency_minutes')
+            .eq('id', userId)
+            .single();
+
+        if (error && error.code === 'PGRST116') return 15;
+        if (error) throw error;
+        return data?.pull_frequency_minutes ?? 15;
+    } catch (e) {
+        console.warn('getPullFrequency failed:', e?.message || e);
+        return 15;
+    }
+}
+
+/**
+ * Update pull frequency setting for a user
+ */
+export async function updatePullFrequency(userId, minutes) {
+    const { data, error } = await supabase
+        .from('tesla_user_settings')
+        .update({ pull_frequency_minutes: minutes })
+        .eq('id', userId)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
 export default supabase;

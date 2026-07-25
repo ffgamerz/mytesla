@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getTeslaSettings, updateTeslaSettings, disconnectTesla } from '../../supabase/client';
+import { getTeslaSettings, updateTeslaSettings, disconnectTesla, getPullFrequency, updatePullFrequency } from '../../supabase/client';
 
 const EDGE_FUNCTION_BASE = import.meta.env.VITE_SUPABASE_URL
     ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tesla-proxy`
@@ -15,6 +15,7 @@ function TeslaSettings({ onBack, initialMessage }) {
     const [vehicleVin, setVehicleVin] = useState('');
     const [message, setMessage] = useState(initialMessage || null);
     const [loading, setLoading] = useState(true);
+    const [pullFrequency, setPullFrequency] = useState(15);
 
     useEffect(() => {
         if (!user) return;
@@ -30,6 +31,9 @@ function TeslaSettings({ onBack, initialMessage }) {
                 setVehicleName(s.tesla_vehicle_name || '');
                 setVehicleVin(s.tesla_vehicle_vin || '');
             }
+            // Load pull frequency
+            const freq = await getPullFrequency(user.id);
+            setPullFrequency(freq);
         } catch (e) {
             console.error(e);
         }
@@ -65,6 +69,18 @@ function TeslaSettings({ onBack, initialMessage }) {
             setMessage({ type: 'success', text: 'VIN saved! Try Pull from Tesla.' });
         } catch (e) {
             setMessage({ type: 'error', text: 'Failed: ' + e.message });
+        }
+    };
+
+    const handleFrequencyChange = async (e) => {
+        const val = parseInt(e.target.value, 10);
+        setPullFrequency(val);
+        if (!user) return;
+        try {
+            await updatePullFrequency(user.id, val);
+            setMessage({ type: 'success', text: `Auto-pull frequency set to ${val} minutes.` });
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Failed: ' + err.message });
         }
     };
 
@@ -165,6 +181,28 @@ function TeslaSettings({ onBack, initialMessage }) {
                         <span className="material-symbols-outlined">save</span>
                         Save VIN
                     </button>
+                </div>
+            )}
+
+            {/* Pull Frequency Setting */}
+            {isConnected && (
+                <div className="card-custom">
+                    <div className="card-custom-title">
+                        <span className="material-symbols-outlined card-title-icon">sync</span>
+                        Auto-Pull Frequency
+                    </div>
+                    <p className="tesla-hint">Set berapa minit sekali auto-pull data dari Tesla. Button manual tetap boleh guna bila-bila masa.</p>
+                    <div className="form-group">
+                        <label className="form-label">Check every</label>
+                        <select className="form-control-custom" value={pullFrequency} onChange={handleFrequencyChange}>
+                            <option value={1}>1 minute</option>
+                            <option value={5}>5 minutes</option>
+                            <option value={10}>10 minutes</option>
+                            <option value={15}>15 minutes</option>
+                            <option value={30}>30 minutes</option>
+                            <option value={60}>60 minutes</option>
+                        </select>
+                    </div>
                 </div>
             )}
 
