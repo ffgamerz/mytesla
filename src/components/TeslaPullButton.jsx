@@ -5,6 +5,7 @@ import {
     getLatestTeslaData,
     getLastTeslaPullTime,
     getPullFrequency,
+    updateTeslaDataLocation,
 } from '../../supabase/client';
 
 const EDGE_FUNCTION_BASE = import.meta.env.VITE_SUPABASE_URL
@@ -45,8 +46,39 @@ function TeslaPullButton({ onDataReceived, onError, onSuccess }) {
 
             const data = await response.json();
 
-            // Save to database
-            await saveTeslaVehicleData(user.id, data);
+            // Save to database - get the inserted row with ID back
+            const insertedRow = await saveTeslaVehicleData(user.id, data);
+            const dataId = insertedRow?.id;
+
+            // If Fleet API returned null for location, use phone GPS as fallback
+            if (dataId && (data.latitude === null || data.longitude === null)) {
+                try {
+                    const phonePos = await new Promise((resolve, reject) => {
+                        if (!navigator.geolocation) {
+                            reject(new Error('Geolocation not supported'));
+                            return;
+                        }
+                        navigator.geolocation.getCurrentPosition(
+                            (position) => resolve({
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude,
+                            }),
+                            (err) => reject(err),
+                            { enableHighAccuracy: true, timeout: 10000 }
+                        );
+                    });
+
+                    // Update the same row with phone GPS coordinates
+                    await updateTeslaDataLocation(dataId, phonePos.latitude, phonePos.longitude);
+
+                    // Merge phone GPS into data for the callback
+                    data.latitude = phonePos.latitude;
+                    data.longitude = phonePos.longitude;
+                } catch (geoErr) {
+                    console.warn('Phone GPS fallback failed:', geoErr?.message || geoErr);
+                    // Non-critical — proceed with null location
+                }
+            }
 
             // Show success toast (unless silent auto-pull)
             if (!silent && onSuccessRef.current) {

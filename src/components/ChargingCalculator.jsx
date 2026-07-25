@@ -190,20 +190,9 @@ function ChargingCalculator({ onNavigateSettings }) {
         // Store timestamp from data or now
         setTeslaTimestamp(data.timestamp || new Date().toISOString());
 
-        // Tesla API doesn't give GPS for third-party apps.
-        // Use phone GPS instead to detect location.
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    setTeslaCoordinate({ lat, lng });
-                },
-                () => {
-                    // GPS failed, silently ignore
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
+        // Location comes from DB (Tesla Fleet API or phone GPS fallback, handled in TeslaPullButton)
+        if (data.latitude !== undefined && data.longitude !== undefined && data.latitude !== null && data.longitude !== null) {
+            setTeslaCoordinate({ lat: data.latitude, lng: data.longitude });
         }
 
         setHasCalculated(false);

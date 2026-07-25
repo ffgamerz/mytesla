@@ -221,9 +221,10 @@ export async function disconnectTesla(userId) {
 
 /**
  * Save Tesla vehicle data pulled from API to database
+ * Returns the inserted row including id
  */
 export async function saveTeslaVehicleData(userId, data) {
-    const { error } = await supabase
+    const { data: inserted, error } = await supabase
         .from('tesla_vehicle_data')
         .insert({
             user_id: userId,
@@ -243,7 +244,23 @@ export async function saveTeslaVehicleData(userId, data) {
             longitude: data.longitude,
             model: data.model,
             trim: data.trim,
-        });
+        })
+        .select()
+        .single();
+
+    if (error) throw error;
+    return inserted;
+}
+
+/**
+ * Update location (latitude/longitude) for a specific tesla_vehicle_data row
+ * Used as fallback when Fleet API doesn't return location data
+ */
+export async function updateTeslaDataLocation(dataId, latitude, longitude) {
+    const { error } = await supabase
+        .from('tesla_vehicle_data')
+        .update({ latitude, longitude })
+        .eq('id', dataId);
 
     if (error) throw error;
 }
