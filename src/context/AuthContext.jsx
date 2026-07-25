@@ -1,6 +1,9 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import supabase from '../../supabase/client';
-import { getLocations, saveLocation } from '../../supabase/client';
+import { saveLocation } from '../../supabase/client';
+import { getLocations } from '../../supabase/client';
+
+const DEFAULT_NAMES = ['Home', 'Office', 'Supercharger', 'Public AC'];
 
 const DEFAULT_LOCATIONS = [
     { name: 'Home', rate: 0.38, voltage: 240, max_amps: 32, icon: 'home' },
@@ -11,39 +14,57 @@ const DEFAULT_LOCATIONS = [
 
 const AuthContext = createContext(null);
 
-async function seedDefaultLocations(userId) {
-    try {
-        // Check if user already has locations
-        const existing = await getLocations(userId);
-        if (existing.length > 0) return; // Already has locations
+// Track seeding per user to prevent double inserts from parallel calls
+const seedingInProgress = new Set();
 
-        // Insert default locations
+async function seedDefaultLocations(userId) {
+    // Guard: prevent duplicate runs
+    if (seedingInProgress.has(userId)) return;
+    seedingInProgress.add(userId);
+
+    try {
+        // Check if default locations already exist by name
+        const existing = await getLocations(userId);
+        const existingNames = new Set(existing.map(l => l.name));
+
+        const needsSeeding = DEFAULT_NAMES.some(name => !existingNames.has(name));
+        if (!needsSeeding) return;
+
+        // Only insert missing ones
         for (const loc of DEFAULT_LOCATIONS) {
-            await saveLocation(userId, loc);
+            if (!existingNames.has(loc.name)) {
+                await saveLocation(userId, loc);
+            }
         }
     } catch (e) {
         console.error('Failed to seed default locations:', e);
+    } finally {
+        seedingInProgress.delete(userId);
     }
 }
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const seededRef = useRef(false);
 
     useEffect(() => {
-        // Check active session
+        // Only run seed once from getSession
         supabase.auth.getSession().then(({ data: { session } }) => {
             const u = session?.user ?? null;
             setUser(u);
-            if (u) seedDefaultLocations(u.id);
             setLoading(false);
+
+            if (u && !seededRef.current) {
+                seededRef.current = true;
+                seedDefaultLocations(u.id);
+            }
         });
 
-        // Listen for auth changes
+        // Listen for auth changes - just update user state, don't seed here
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             const u = session?.user ?? null;
             setUser(u);
-            if (u) seedDefaultLocations(u.id);
         });
 
         return () => subscription.unsubscribe();
