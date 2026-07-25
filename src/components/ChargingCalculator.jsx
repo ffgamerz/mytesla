@@ -49,6 +49,7 @@ function ChargingCalculator({ onNavigateSettings }) {
     // Manual amperage mode (when planning by start time)
     const [manualAmps, setManualAmps] = useState(32);
     const [ampsMode, setAmpsMode] = useState('auto'); // 'auto' or 'manual'
+    const [toastMsg, setToastMsg] = useState(null);
 
     const selectedModel = teslaModels.find(m => m.id === selectedModelId) || DEFAULT_MODEL;
 
@@ -164,8 +165,28 @@ function ChargingCalculator({ onNavigateSettings }) {
         alert(errorMsg);
     }, []);
 
+    const handleTeslaSuccess = useCallback((data) => {
+        // Show success toast
+        const charging = data.is_charging ? '⚡ Charging' : '';
+        setToastMsg({
+            type: 'success',
+            text: `🔋 ${data.battery_level}%${data.battery_range ? ` · ${Math.round(data.battery_range)} km` : ''}${charging ? ' · ' + charging : ''}`,
+        });
+    }, []);
+
     return (
         <div className="app-container">
+            {/* Toast message */}
+            {toastMsg && (
+                <div className={`tesla-toast ${toastMsg.type === 'error' ? 'tesla-toast-error' : 'tesla-toast-success'}`}>
+                    <span className="material-symbols-outlined">{toastMsg.type === 'error' ? 'error' : 'check_circle'}</span>
+                    {toastMsg.text}
+                    <button className="toast-close" onClick={() => setToastMsg(null)}>
+                        <span className="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            )}
+
             {/* Header */}
             <div className="app-header">
                 <div className="app-header-icon">
@@ -244,6 +265,7 @@ function ChargingCalculator({ onNavigateSettings }) {
                     <TeslaPullButton
                         onDataReceived={handleTeslaDataReceived}
                         onError={handleTeslaError}
+                        onSuccess={handleTeslaSuccess}
                     />
                 </div>
 

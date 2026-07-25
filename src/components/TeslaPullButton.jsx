@@ -5,7 +5,7 @@ const EDGE_FUNCTION_BASE = import.meta.env.VITE_SUPABASE_URL
     ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tesla-proxy`
     : '';
 
-function TeslaPullButton({ onDataReceived, onError }) {
+function TeslaPullButton({ onDataReceived, onError, onSuccess }) {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
 
@@ -26,6 +26,15 @@ function TeslaPullButton({ onDataReceived, onError }) {
             }
 
             const data = await response.json();
+
+            // Show success toast with key data
+            if (onSuccess) {
+                onSuccess({
+                    battery_level: data.battery_level,
+                    battery_range: data.battery_range,
+                    is_charging: data.is_charging,
+                });
+            }
 
             if (onDataReceived) {
                 onDataReceived({
