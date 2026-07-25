@@ -63,6 +63,7 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
     const [geoLng, setGeoLng] = useState(null);
     const [geoAddress, setGeoAddress] = useState('');
     const [foundNearby, setFoundNearby] = useState(null);
+    const [teslaLocPrompt, setTeslaLocPrompt] = useState(null); // { lat, lng } when unsaved Tesla location
 
     // Load all locations from database
     const loadLocations = async () => {
@@ -121,7 +122,7 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
     }, [dbLocations.length, user]);
 
     // Auto-detect location from Tesla coordinates (only when pulled)
-    // Only auto-selects saved locations nearby; never creates new ones
+    // Shows a prompt to save new location if none nearby
     useEffect(() => {
         if (!teslaCoordinate || !dbLocations.length) return;
 
@@ -145,6 +146,10 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
             if (selectedLocation?.db_id !== nearest.id) {
                 onLocationChange(formatLoc(nearest));
             }
+            setTeslaLocPrompt(null);
+        } else {
+            // No saved location nearby — show prompt, but don't auto-save
+            setTeslaLocPrompt({ lat, lng });
         }
     }, [teslaCoordinate?.lat, teslaCoordinate?.lng, dbLocations, selectedLocation?.db_id, onLocationChange]);
 
@@ -322,6 +327,16 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
         setEditId(null);
         setGeoStatus('');
         setFoundNearby(null);
+        setShowModal(true);
+    };
+
+    const handleAddTeslaLocation = async () => {
+        if (!user || !teslaLocPrompt) return;
+        // Reverse geocode to get address, then open the add form pre-filled
+        const address = await reverseGeocode(teslaLocPrompt.lat, teslaLocPrompt.lng);
+        setTeslaLocPrompt(null);
+        // Open modal in edit mode with pre-filled data
+        startNew(address || `Location (${teslaLocPrompt.lat.toFixed(4)}, ${teslaLocPrompt.lng.toFixed(4)})`, teslaLocPrompt.lat, teslaLocPrompt.lng);
         setShowModal(true);
     };
 
@@ -556,23 +571,40 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
     }
 
     return (
-        <div className="location-display" onClick={handleOpen}>
-            <div className="location-icon-box">
-                <span className="material-symbols-outlined loc-icon-symbol">
-                    {currentLocation.icon || 'home'}
-                </span>
-            </div>
-            <div className="location-info">
-                <div className="location-name">{currentLocation.name}</div>
-                <div className="location-rate">
-                    RM {currentLocation.rate.toFixed(2)} / kWh &middot;{' '}
-                    {currentLocation.voltage}V
+        <>
+            <div className="location-display" onClick={handleOpen}>
+                <div className="location-icon-box">
+                    <span className="material-symbols-outlined loc-icon-symbol">
+                        {currentLocation.icon || 'home'}
+                    </span>
                 </div>
+                <div className="location-info">
+                    <div className="location-name">{currentLocation.name}</div>
+                    <div className="location-rate">
+                        RM {currentLocation.rate.toFixed(2)} / kWh &middot;{' '}
+                        {currentLocation.voltage}V
+                    </div>
+                </div>
+                <button className="location-change-btn" onClick={handleOpen}>
+                    Change <span className="material-symbols-outlined expand-icon">expand_more</span>
+                </button>
             </div>
-            <button className="location-change-btn" onClick={handleOpen}>
-                Change <span className="material-symbols-outlined expand-icon">expand_more</span>
-            </button>
-        </div>
+
+            {/* Prompt to save new Tesla location */}
+            {teslaLocPrompt && (
+                <div className="location-save-prompt">
+                    <span className="material-symbols-outlined location-save-prompt-icon">add_location</span>
+                    <div className="location-save-prompt-info">
+                        <strong>New location detected</strong><br />
+                        No saved charging location at this spot.
+                    </div>
+                    <button className="location-save-prompt-btn" onClick={handleAddTeslaLocation}>
+                        <span className="material-symbols-outlined" style={{fontSize: 16}}>add</span>
+                        Add
+                    </button>
+                </div>
+            )}
+        </>
     );
 }
 
