@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 
 const DEFAULT_LOCATIONS = [
-    { id: 'home', name: 'Home', rate: 0.38, voltage: 240, icon: '🏠', maxAmps: 32 },
-    { id: 'office', name: 'Office', rate: 0.45, voltage: 240, icon: '🏢', maxAmps: 32 },
-    { id: 'supercharger', name: 'Supercharger', rate: 1.20, voltage: 480, icon: '⚡', maxAmps: 500 },
-    { id: 'public_ac', name: 'Public AC', rate: 0.60, voltage: 240, icon: '📍', maxAmps: 32 },
+    { id: 'home', name: 'Home', rate: 0.38, voltage: 240, icon: 'home', maxAmps: 32 },
+    { id: 'office', name: 'Office', rate: 0.45, voltage: 240, icon: 'business', maxAmps: 32 },
+    { id: 'supercharger', name: 'Supercharger', rate: 1.20, voltage: 480, icon: 'bolt', maxAmps: 500 },
+    { id: 'public_ac', name: 'Public AC', rate: 0.60, voltage: 240, icon: 'location_on', maxAmps: 32 },
 ];
 
 function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
     const [showModal, setShowModal] = useState(false);
-    const [locations, setLocations] = useState(DEFAULT_LOCATIONS);
+    const [locations] = useState(DEFAULT_LOCATIONS);
     const [isDetecting, setIsDetecting] = useState(false);
     const [currentId, setCurrentId] = useState(
         selectedLocation?.id || 'home'
@@ -25,11 +25,8 @@ function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
 
         setIsDetecting(true);
         navigator.geolocation.getCurrentPosition(
-            (position) => {
-                // In future: reverse geocode to get location name
-                // For now, just use detected status
+            () => {
                 setIsDetecting(false);
-                // Could add a custom location entry here in the future
             },
             () => {
                 setIsDetecting(false);
@@ -78,7 +75,8 @@ function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
                         onClick={handleDetectLocation}
                         disabled={isDetecting}
                     >
-                        {isDetecting ? '📍 Detecting...' : '📍 Detect My Location'}
+                        <span className="material-symbols-outlined geo-btn-icon">my_location</span>
+                        {isDetecting ? 'Detecting...' : 'Detect My Location'}
                     </button>
 
                     {locations.map(loc => (
@@ -87,11 +85,11 @@ function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
                             className={`modal-option ${currentId === loc.id ? 'selected' : ''}`}
                             onClick={() => handleSelect(loc.id)}
                         >
-                            <span className="modal-option-icon">{loc.icon}</span>
+                            <span className="material-symbols-outlined modal-option-icon">{loc.icon}</span>
                             <div className="modal-option-info">
                                 <div className="modal-option-label">{loc.name}</div>
                                 <div className="modal-option-sub">
-                                    RM {loc.rate.toFixed(2)}/kWh · {loc.voltage}V · Max {loc.maxAmps}A
+                                    RM {loc.rate.toFixed(2)}/kWh &middot; {loc.voltage}V &middot; Max {loc.maxAmps}A
                                 </div>
                             </div>
                             {currentId === loc.id && <span className="tag tag-blue">Active</span>}
@@ -112,6 +110,7 @@ function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
                     </div>
 
                     <button className="btn-primary-custom mt-3" onClick={handleConfirm}>
+                        <span className="material-symbols-outlined">check</span>
                         Apply Location
                     </button>
 
@@ -126,17 +125,17 @@ function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
     return (
         <div className="location-display" onClick={handleOpen}>
             <div className="location-icon-box">
-                {currentLocation.icon}
+                <span className="material-symbols-outlined loc-icon-symbol">{currentLocation.icon}</span>
             </div>
             <div className="location-info">
                 <div className="location-name">{currentLocation.name}</div>
                 <div className="location-rate">
-                    RM {(selectedLocation?.rate || currentLocation.rate).toFixed(2)} / kWh ·{' '}
+                    RM {(selectedLocation?.rate || currentLocation.rate).toFixed(2)} / kWh &middot;{' '}
                     {currentLocation.voltage}V
                 </div>
             </div>
             <button className="location-change-btn" onClick={handleOpen}>
-                Change ▾
+                Change <span className="material-symbols-outlined expand-icon">expand_more</span>
             </button>
         </div>
     );

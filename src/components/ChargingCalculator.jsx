@@ -24,7 +24,7 @@ function ChargingCalculator() {
         name: 'Home',
         rate: 0.38,
         voltage: 240,
-        icon: '🏠',
+        icon: 'home',
         maxAmps: 32,
     });
     const [hasCalculated, setHasCalculated] = useState(false);
@@ -105,14 +105,19 @@ function ChargingCalculator() {
         <div className="app-container">
             {/* Header */}
             <div className="app-header">
-                <div className="app-header-icon">🔋</div>
+                <div className="app-header-icon">
+                    <span className="material-symbols-outlined header-icon-symbol">bolt</span>
+                </div>
                 <h1>My Tesla Monitor</h1>
                 <p>Charging Calculator</p>
             </div>
 
             {/* Vehicle Card */}
             <div className="card-custom">
-                <div className="card-custom-title">🚗 Vehicle</div>
+                <div className="card-custom-title">
+                    <span className="material-symbols-outlined card-title-icon">directions_car</span>
+                    Vehicle
+                </div>
                 <div className="form-group">
                     <label className="form-label">Tesla Model</label>
                     <select
@@ -129,23 +134,30 @@ function ChargingCalculator() {
                 </div>
                 <div className="spec-chips">
                     <span className="spec-chip">
-                        🔋 {selectedModel.batteryCapacity} kWh
+                        <span className="material-symbols-outlined spec-icon">battery_charging_full</span>
+                        {selectedModel.batteryCapacity} kWh
                     </span>
                     <span className="spec-chip">
-                        📏 {selectedModel.range} km
+                        <span className="material-symbols-outlined spec-icon">route</span>
+                        {selectedModel.range} km
                     </span>
                 </div>
             </div>
 
             {/* Battery Card */}
             <div className="card-custom">
-                <div className="card-custom-title">🔋 Battery</div>
+                <div className="card-custom-title">
+                    <span className="material-symbols-outlined card-title-icon">battery_full</span>
+                    Battery
+                </div>
 
                 <div className="battery-display">
-                    <div className="battery-icon-large">🔋</div>
+                    <div className="battery-icon-large">
+                        <span className="material-symbols-outlined battery-main-icon">battery_charging_full</span>
+                    </div>
                     <div className="battery-info">
                         <div className="battery-pct-label">
-                            Current: <span>{currentPct}%</span> → Target: {targetPct}%
+                            Current: <span>{currentPct}%</span> &rarr; Target: {targetPct}%
                         </div>
                         <div className="battery-track">
                             <div
@@ -193,7 +205,10 @@ function ChargingCalculator() {
 
             {/* Schedule Card */}
             <div className="card-custom">
-                <div className="card-custom-title">⏰ Schedule</div>
+                <div className="card-custom-title">
+                    <span className="material-symbols-outlined card-title-icon">schedule</span>
+                    Schedule
+                </div>
 
                 <div className="form-group">
                     <label className="form-label">Ready by</label>
@@ -220,17 +235,24 @@ function ChargingCalculator() {
                 onClick={handleCalculate}
                 disabled={energyNeeded <= 0}
             >
-                🚀 Calculate Charge Plan
+                <span className="material-symbols-outlined btn-icon">calculate</span>
+                Calculate Charge Plan
             </button>
 
             {/* Results */}
             {hasCalculated && results && (
                 <div className="card-custom mt-4">
-                    <div className="card-custom-title">📊 Charge Summary</div>
+                    <div className="card-custom-title">
+                        <span className="material-symbols-outlined card-title-icon">summarize</span>
+                        Charge Summary
+                    </div>
 
                     <div className="results-section">
                         <div className="result-item">
-                            <span className="result-label">⚡ Recommended Amps</span>
+                            <span className="result-label">
+                                <span className="material-symbols-outlined result-icon">bolt</span>
+                                Recommended Amps
+                            </span>
                             <span className="result-value accent">
                                 {results.recommendedAmps} A
                                 {!results.isWithinLimit && (
@@ -242,38 +264,54 @@ function ChargingCalculator() {
                         </div>
 
                         <div className="result-item">
-                            <span className="result-label">🔋 Energy Needed</span>
+                            <span className="result-label">
+                                <span className="material-symbols-outlined result-icon">battery_charging_full</span>
+                                Energy Needed
+                            </span>
                             <span className="result-value">{results.energyNeeded} kWh</span>
                         </div>
 
                         <div className="result-item">
-                            <span className="result-label">⏱ Charging Duration</span>
+                            <span className="result-label">
+                                <span className="material-symbols-outlined result-icon">timer</span>
+                                Charging Duration
+                            </span>
                             <span className="result-value">{results.duration}</span>
                         </div>
 
                         <div className="result-item">
-                            <span className="result-label">🌅 Start Charging</span>
+                            <span className="result-label">
+                                <span className="material-symbols-outlined result-icon">wb_twilight</span>
+                                Start Charging
+                            </span>
                             <span className="result-value green">{results.startTime}</span>
                         </div>
 
                         <div className="result-item">
-                            <span className="result-label">💰 Est. Cost</span>
+                            <span className="result-label">
+                                <span className="material-symbols-outlined result-icon">payments</span>
+                                Est. Cost
+                            </span>
                             <span className="result-value">RM {results.totalCost.toFixed(2)}</span>
                         </div>
                     </div>
 
                     <div className="info-box">
-                        💡 Plug in at <strong>{results.startTime}</strong> for{' '}
-                        <strong>{results.duration}</strong> to reach {targetPct}% by{' '}
-                        <strong>{targetTime}</strong>
-                        {!results.isWithinLimit && (
-                            <>
-                                <br />
-                                ⚠️ Required amps ({results.requestedAmps}A) exceeds safe limit.{' '}
-                                Using max safe amperage: <strong>{results.safeMaxAmps}A</strong>.
-                                Charging will take longer.
-                            </>
-                        )}
+                        <span className="material-symbols-outlined info-icon">lightbulb</span>
+                        <span>
+                            Plug in at <strong>{results.startTime}</strong> for{' '}
+                            <strong>{results.duration}</strong> to reach {targetPct}% by{' '}
+                            <strong>{targetTime}</strong>
+                            {!results.isWithinLimit && (
+                                <>
+                                    <br />
+                                    <span className="material-symbols-outlined warning-icon">warning</span>
+                                    Required amps ({results.requestedAmps}A) exceeds safe limit.{' '}
+                                    Using max safe amperage: <strong>{results.safeMaxAmps}A</strong>.
+                                    Charging will take longer.
+                                </>
+                            )}
+                        </span>
                     </div>
                 </div>
             )}

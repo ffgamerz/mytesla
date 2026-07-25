@@ -634,6 +634,80 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     to { transform: translateY(0); }
 }
 
+/* ---------- Material Icons ---------- */
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+    line-height: 1;
+    user-select: none;
+}
+
+.header-icon-symbol {
+    font-size: 28px;
+    color: #fff;
+}
+
+.card-title-icon {
+    font-size: 18px;
+    color: var(--accent-blue);
+}
+
+.spec-icon {
+    font-size: 14px;
+    margin-right: 3px;
+    color: var(--text-muted);
+    vertical-align: middle;
+}
+
+.battery-main-icon {
+    font-size: 36px;
+    color: var(--accent-green);
+}
+
+.btn-icon {
+    font-size: 20px;
+}
+
+.result-icon {
+    font-size: 18px;
+    color: var(--text-muted);
+}
+
+.info-icon {
+    font-size: 18px;
+    color: var(--accent-green);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.warning-icon {
+    font-size: 16px;
+    color: var(--danger);
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+.geo-btn-icon {
+    font-size: 18px;
+    color: var(--accent-blue);
+}
+
+.modal-option-icon {
+    font-size: 24px;
+    color: var(--accent-blue);
+}
+
+.loc-icon-symbol {
+    font-size: 22px;
+    color: var(--accent-blue);
+}
+
+.expand-icon {
+    font-size: 16px;
+    vertical-align: middle;
+    margin-left: -2px;
+}
+
 /* ---------- Utility ---------- */
 .mt-1 { margin-top: 4px; }
 .mt-2 { margin-top: 8px; }
