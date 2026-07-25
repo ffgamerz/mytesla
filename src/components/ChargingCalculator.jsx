@@ -172,7 +172,7 @@ function ChargingCalculator({ onNavigateSettings }) {
                     <span className="material-symbols-outlined header-icon-symbol">bolt</span>
                 </div>
                 <div className="header-title-row">
-                    <h1>My Tesla Monitor</h1>
+                    <h1>Mad Max</h1>
                     <button className="btn-settings-icon" onClick={onNavigateSettings} title="Tesla Settings">
                         <span className="material-symbols-outlined">settings</span>
                     </button>

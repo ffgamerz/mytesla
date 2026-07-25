@@ -43,7 +43,7 @@ function LoginPage() {
                     <div className="login-logo">
                         <span className="material-symbols-outlined login-logo-icon">bolt</span>
                     </div>
-                    <h1>My Tesla Monitor</h1>
+                    <h1>Mad Max</h1>
                     <p>Sign in to manage your charging</p>
                 </div>
 

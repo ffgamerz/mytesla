@@ -75,7 +75,7 @@ function TeslaSettings({ onBack, initialMessage }) {
             <div className="app-container">
                 <div className="app-header">
                     <div className="app-header-icon"><span className="material-symbols-outlined header-icon-symbol">settings</span></div>
-                    <h1>My Tesla Monitor</h1>
+                    <h1>Mad Max</h1>
                     <p>Tesla Settings</p>
                 </div>
                 <div className="loading-card"><div className="history-loading">Loading...</div></div>
@@ -87,7 +87,7 @@ function TeslaSettings({ onBack, initialMessage }) {
         <div className="app-container">
             <div className="app-header">
                 <div className="app-header-icon"><span className="material-symbols-outlined header-icon-symbol">settings</span></div>
-                <h1>My Tesla Monitor</h1>
+                <h1>Mad Max</h1>
                 <p>Tesla Settings</p>
             </div>
 
