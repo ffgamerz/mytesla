@@ -39,11 +39,14 @@ function ChargingCalculator() {
     const [results, setResults] = useState(null);
 
     // Completion time inputs
-    const [completionDate, setCompletionDate] = useState(getTodayDateStr());
+    // Default today string for completion date
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    const [completionDate, setCompletionDate] = useState(todayStr);
     const [completionTime, setCompletionTime] = useState('08:00');
 
     // Start time inputs
-    const [startDate, setStartDate] = useState(getTodayDateStr());
+    const [startDate, setStartDate] = useState(todayStr);
     const [startTime, setStartTime] = useState('08:00');
 
     // Manual amperage mode (when planning by start time)
@@ -309,7 +312,6 @@ function ChargingCalculator() {
                                 className="form-control-custom"
                                 value={startDate}
                                 onChange={e => setStartDate(e.target.value)}
-                                min={getTodayDateStr()}
                             />
                         </div>
                         <div className="form-group">
