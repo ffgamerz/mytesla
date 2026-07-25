@@ -755,6 +755,111 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     color: var(--accent-blue);
 }
 
+/* ---------- Geolocation Status ---------- */
+.geo-status {
+    padding: 14px;
+    border-radius: var(--radius-md);
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.geo-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #f87171;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.geo-nearby, .geo-new {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.geo-nearby-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--accent-blue);
+    margin-bottom: 6px;
+}
+
+.geo-nearby-header span:first-child {
+    font-size: 18px;
+}
+
+.geo-address {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+    line-height: 1.4;
+}
+
+.geo-nearby-loc {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--bg-input-border);
+    margin-bottom: 12px;
+}
+
+.geo-nearby-icon {
+    font-size: 24px;
+    color: var(--accent-blue);
+}
+
+.geo-nearby-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.geo-nearby-dist {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.geo-nearby-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.geo-nearby-actions .btn-primary-custom {
+    padding: 12px;
+    font-size: 13px;
+}
+
+.geo-nearby-actions .btn-save {
+    padding: 12px;
+    font-size: 13px;
+}
+
+.geo-coords-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: rgba(59, 130, 246, 0.08);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.geo-coords-info span {
+    font-size: 14px;
+    color: var(--accent-blue);
+}
+
+.loc-has-geo {
+    font-size: 11px;
+}
+
 /* ---------- Geolocation Button ---------- */
 .geo-btn {
     display: flex;

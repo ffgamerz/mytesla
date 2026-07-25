@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS tesla_user_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 2. Locations (saved by user)
+-- 2. Locations (saved by user, with geolocation)
 CREATE TABLE IF NOT EXISTS tesla_locations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -20,8 +20,25 @@ CREATE TABLE IF NOT EXISTS tesla_locations (
     voltage INT NOT NULL DEFAULT 240,
     max_amps INT NOT NULL DEFAULT 32,
     icon TEXT NOT NULL DEFAULT 'home',
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Add columns if table already exists (for existing users)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'tesla_locations') THEN
+        BEGIN
+            ALTER TABLE tesla_locations ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+        EXCEPTION WHEN duplicate_column THEN NULL;
+        END;
+        BEGIN
+            ALTER TABLE tesla_locations ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+        EXCEPTION WHEN duplicate_column THEN NULL;
+        END;
+    END IF;
+END $$;
 
 -- 3. Charging History / Saved Plans
 CREATE TABLE IF NOT EXISTS tesla_charging_history (
