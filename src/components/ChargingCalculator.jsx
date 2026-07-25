@@ -12,17 +12,20 @@ import {
     calcHoursAvailable,
     calcSafeAmps,
     getTodayDateStr,
-    getTomorrowDateStr,
+    formatDateTime,
 } from '../utils/calculations';
 
 const DEFAULT_MODEL = teslaModels[0]; // Model 3
+
+const SCHEDULE_MODES = {
+    COMPLETION: 'completion',
+    START: 'start',
+};
 
 function ChargingCalculator() {
     const [selectedModelId, setSelectedModelId] = useState(DEFAULT_MODEL.id);
     const [currentPct, setCurrentPct] = useState(45);
     const [targetPct, setTargetPct] = useState(100);
-    const [targetDate, setTargetDate] = useState(getTodayDateStr());
-    const [targetTime, setTargetTime] = useState('08:00');
     const [location, setLocation] = useState({
         id: 'home',
         name: 'Home',
@@ -31,8 +34,21 @@ function ChargingCalculator() {
         icon: 'home',
         maxAmps: 32,
     });
+    const [scheduleMode, setScheduleMode] = useState(SCHEDULE_MODES.COMPLETION);
     const [hasCalculated, setHasCalculated] = useState(false);
     const [results, setResults] = useState(null);
+
+    // Completion time inputs
+    const [completionDate, setCompletionDate] = useState(getTodayDateStr());
+    const [completionTime, setCompletionTime] = useState('08:00');
+
+    // Start time inputs
+    const [startDate, setStartDate] = useState(getTodayDateStr());
+    const [startTime, setStartTime] = useState('08:00');
+
+    // Manual amperage mode (when planning by start time)
+    const [manualAmps, setManualAmps] = useState(32);
+    const [ampsMode, setAmpsMode] = useState('auto'); // 'auto' or 'manual'
 
     const selectedModel = teslaModels.find(m => m.id === selectedModelId) || DEFAULT_MODEL;
 
@@ -44,63 +60,96 @@ function ChargingCalculator() {
     );
 
     const handleCalculate = useCallback(() => {
-        const hoursAvailable = calcHoursAvailable(targetDate, targetTime);
-
-        if (hoursAvailable <= 0 || energyNeeded <= 0) {
-            setResults(null);
-            setHasCalculated(false);
-            return;
-        }
-
-        // Calculate required amps
-        const requiredAmps = calcRequiredAmps(
-            energyNeeded,
-            hoursAvailable,
-            location.voltage
-        );
-
-        // Calculate safe max amps (80% rule)
         const safeMaxAmps = calcSafeAmps(location.maxAmps);
 
-        // Get the actual amperage we'll use (clamp to safe max)
-        const actualAmps = Math.min(requiredAmps, safeMaxAmps);
+        if (scheduleMode === SCHEDULE_MODES.COMPLETION) {
+            // Plan by completion time → calculate required amps & start time
+            const hoursAvailable = calcHoursAvailable(completionDate, completionTime);
 
-        // Recalculate with actual amperage
-        const actualPower = calcChargingPower(location.voltage, actualAmps);
-        const actualDuration = calcChargingTime(energyNeeded, actualPower);
+            if (hoursAvailable <= 0 || energyNeeded <= 0) {
+                setResults(null);
+                setHasCalculated(false);
+                return;
+            }
 
-        // Get schedule with dates
-        const schedule = calcChargeSchedule(targetDate, targetTime, actualDuration);
+            const requiredAmps = calcRequiredAmps(
+                energyNeeded,
+                hoursAvailable,
+                location.voltage
+            );
 
-        // Calculate what time it would finish if we start now at these amps
-        const finishIfStartNow = new Date();
-        finishIfStartNow.setHours(finishIfStartNow.getHours() + actualDuration);
+            const actualAmps = Math.min(requiredAmps, safeMaxAmps);
+            const actualPower = calcChargingPower(location.voltage, actualAmps);
+            const actualDuration = calcChargingTime(energyNeeded, actualPower);
+            const schedule = calcChargeSchedule(completionDate, completionTime, actualDuration);
 
-        const totalCost = calcCost(energyNeeded, location.rate);
+            const totalCost = calcCost(energyNeeded, location.rate);
 
-        setResults({
-            recommendedAmps: Math.round(actualAmps * 10) / 10,
-            requestedAmps: Math.round(requiredAmps * 10) / 10,
-            duration: formatDuration(actualDuration),
-            durationHours: actualDuration,
-            startFormatted: schedule.startFormatted,
-            endFormatted: schedule.endFormatted,
-            endDateLong: schedule.endDateLong,
-            energyNeeded: Math.round(energyNeeded * 100) / 100,
-            totalCost: Math.round(totalCost * 100) / 100,
-            isWithinLimit: requiredAmps <= safeMaxAmps,
-            safeMaxAmps,
-        });
+            setResults({
+                mode: 'completion',
+                recommendedAmps: Math.round(actualAmps * 10) / 10,
+                requestedAmps: Math.round(requiredAmps * 10) / 10,
+                duration: formatDuration(actualDuration),
+                durationHours: actualDuration,
+                startFormatted: schedule.startFormatted,
+                endFormatted: schedule.endFormatted,
+                energyNeeded: Math.round(energyNeeded * 100) / 100,
+                totalCost: Math.round(totalCost * 100) / 100,
+                isWithinLimit: requiredAmps <= safeMaxAmps,
+                safeMaxAmps,
+            });
+        } else {
+            // Plan by start time → calculate completion time at given amps
+            const actualAmps = ampsMode === 'manual' ? manualAmps : safeMaxAmps;
+            const clampedAmps = Math.min(actualAmps, safeMaxAmps);
+
+            if (clampedAmps <= 0 || energyNeeded <= 0) {
+                setResults(null);
+                setHasCalculated(false);
+                return;
+            }
+
+            const actualPower = calcChargingPower(location.voltage, clampedAmps);
+            const actualDuration = calcChargingTime(energyNeeded, actualPower);
+
+            // Calculate completion time from start date/time + duration
+            const [sh, smin] = startTime.split(':').map(Number);
+            const [sy, smon, sday] = startDate.split('-').map(Number);
+            const startDateTime = new Date(sy, smon - 1, sday, sh, smin, 0);
+
+            // If start time is in the past, move to next day
+            const now = new Date();
+            if (startDateTime <= now) {
+                startDateTime.setDate(startDateTime.getDate() + 1);
+            }
+
+            const endDateTime = new Date(startDateTime.getTime() + actualDuration * 60 * 60 * 1000);
+
+            const totalCost = calcCost(energyNeeded, location.rate);
+
+            setResults({
+                mode: 'start',
+                recommendedAmps: clampedAmps,
+                duration: formatDuration(actualDuration),
+                durationHours: actualDuration,
+                startFormatted: formatDateTime(startDateTime),
+                endFormatted: formatDateTime(endDateTime),
+                energyNeeded: Math.round(energyNeeded * 100) / 100,
+                totalCost: Math.round(totalCost * 100) / 100,
+                isWithinLimit: actualAmps <= safeMaxAmps,
+                safeMaxAmps,
+            });
+        }
 
         setHasCalculated(true);
-    }, [energyNeeded, targetDate, targetTime, location]);
+    }, [energyNeeded, scheduleMode, completionDate, completionTime, startDate, startTime, manualAmps, ampsMode, location]);
 
     // Auto-calculate on input changes
     useEffect(() => {
         if (hasCalculated) {
             handleCalculate();
         }
-    }, [selectedModelId, currentPct, targetPct, targetDate, targetTime, location.rate, location.maxAmps, hasCalculated]);
+    }, [selectedModelId, currentPct, targetPct, scheduleMode, completionDate, completionTime, startDate, startTime, manualAmps, ampsMode, location.rate, location.maxAmps, hasCalculated]);
 
     return (
         <div className="app-container">
@@ -211,26 +260,110 @@ function ChargingCalculator() {
                     Schedule
                 </div>
 
-                <div className="form-group">
-                    <label className="form-label">Target Date</label>
-                    <input
-                        type="date"
-                        className="form-control-custom"
-                        value={targetDate}
-                        onChange={e => setTargetDate(e.target.value)}
-                        min={getTodayDateStr()}
-                    />
+                {/* Schedule Mode Toggle */}
+                <div className="schedule-toggle">
+                    <button
+                        className={`toggle-btn ${scheduleMode === SCHEDULE_MODES.COMPLETION ? 'active' : ''}`}
+                        onClick={() => setScheduleMode(SCHEDULE_MODES.COMPLETION)}
+                    >
+                        <span className="material-symbols-outlined toggle-icon">check_circle</span>
+                        By Completion
+                    </button>
+                    <button
+                        className={`toggle-btn ${scheduleMode === SCHEDULE_MODES.START ? 'active' : ''}`}
+                        onClick={() => setScheduleMode(SCHEDULE_MODES.START)}
+                    >
+                        <span className="material-symbols-outlined toggle-icon">wb_twilight</span>
+                        By Start Time
+                    </button>
                 </div>
 
-                <div className="form-group">
-                    <label className="form-label">Ready by (Time)</label>
-                    <input
-                        type="time"
-                        className="form-control-custom"
-                        value={targetTime}
-                        onChange={e => setTargetTime(e.target.value)}
-                    />
-                </div>
+                {scheduleMode === SCHEDULE_MODES.COMPLETION ? (
+                    <>
+                        <div className="form-group">
+                            <label className="form-label">Target Date (when to finish)</label>
+                            <input
+                                type="date"
+                                className="form-control-custom"
+                                value={completionDate}
+                                onChange={e => setCompletionDate(e.target.value)}
+                                min={getTodayDateStr()}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Ready by (Time)</label>
+                            <input
+                                type="time"
+                                className="form-control-custom"
+                                value={completionTime}
+                                onChange={e => setCompletionTime(e.target.value)}
+                            />
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="form-group">
+                            <label className="form-label">Start Date</label>
+                            <input
+                                type="date"
+                                className="form-control-custom"
+                                value={startDate}
+                                onChange={e => setStartDate(e.target.value)}
+                                min={getTodayDateStr()}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Start Time</label>
+                            <input
+                                type="time"
+                                className="form-control-custom"
+                                value={startTime}
+                                onChange={e => setStartTime(e.target.value)}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">
+                                Amperage Setting
+                                <span className="form-label-hint"> (Max safe: {calcSafeAmps(location.maxAmps)}A)</span>
+                            </label>
+                            <div className="amps-mode-toggle">
+                                <button
+                                    className={`toggle-btn-sm ${ampsMode === 'auto' ? 'active' : ''}`}
+                                    onClick={() => setAmpsMode('auto')}
+                                >
+                                    <span className="material-symbols-outlined toggle-icon-sm">auto_schedule</span>
+                                    Auto (Max)
+                                </button>
+                                <button
+                                    className={`toggle-btn-sm ${ampsMode === 'manual' ? 'active' : ''}`}
+                                    onClick={() => setAmpsMode('manual')}
+                                >
+                                    <span className="material-symbols-outlined toggle-icon-sm">tune</span>
+                                    Manual
+                                </button>
+                            </div>
+                            {ampsMode === 'manual' && (
+                                <div className="range-wrap mt-2">
+                                    <input
+                                        type="range"
+                                        className="form-control-custom"
+                                        min="5"
+                                        max={location.maxAmps}
+                                        value={manualAmps}
+                                        onChange={e => setManualAmps(Number(e.target.value))}
+                                    />
+                                    <span className="range-value">{manualAmps} A</span>
+                                </div>
+                            )}
+                            {ampsMode === 'auto' && (
+                                <div className="auto-amps-info">
+                                    <span className="material-symbols-outlined auto-amps-icon">bolt</span>
+                                    Using max safe amperage: <strong>{calcSafeAmps(location.maxAmps)}A</strong> ({location.voltage}V)
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
 
                 <div className="form-group">
                     <label className="form-label">Location & Rate</label>
@@ -260,20 +393,39 @@ function ChargingCalculator() {
                     </div>
 
                     <div className="results-section">
-                        <div className="result-item">
-                            <span className="result-label">
-                                <span className="material-symbols-outlined result-icon">bolt</span>
-                                Recommended Amps
-                            </span>
-                            <span className="result-value accent">
-                                {results.recommendedAmps} A
-                                {!results.isWithinLimit && (
-                                    <span className="tag tag-green" style={{ marginLeft: 8 }}>
-                                        Max {results.safeMaxAmps}A
-                                    </span>
-                                )}
-                            </span>
-                        </div>
+                        {results.mode === 'completion' && (
+                            <div className="result-item">
+                                <span className="result-label">
+                                    <span className="material-symbols-outlined result-icon">bolt</span>
+                                    Recommended Amps
+                                </span>
+                                <span className="result-value accent">
+                                    {results.recommendedAmps} A
+                                    {!results.isWithinLimit && (
+                                        <span className="tag tag-green" style={{ marginLeft: 8 }}>
+                                            Max {results.safeMaxAmps}A
+                                        </span>
+                                    )}
+                                </span>
+                            </div>
+                        )}
+
+                        {results.mode === 'start' && (
+                            <div className="result-item">
+                                <span className="result-label">
+                                    <span className="material-symbols-outlined result-icon">bolt</span>
+                                    Charging Amps
+                                </span>
+                                <span className="result-value accent">
+                                    {results.recommendedAmps} A
+                                    {!results.isWithinLimit && (
+                                        <span className="tag tag-green" style={{ marginLeft: 8 }}>
+                                            Max {results.safeMaxAmps}A
+                                        </span>
+                                    )}
+                                </span>
+                            </div>
+                        )}
 
                         <div className="result-item">
                             <span className="result-label">
@@ -319,16 +471,16 @@ function ChargingCalculator() {
                     <div className="info-box">
                         <span className="material-symbols-outlined info-icon">lightbulb</span>
                         <span>
-                            Plug in at <strong>{results.startFormatted}</strong> for{' '}
-                            <strong>{results.duration}</strong>. Car will be ready by{' '}
-                            <strong>{results.endFormatted}</strong>
+                            {results.mode === 'completion' ? (
+                                <>Plug in at <strong>{results.startFormatted}</strong> and charge for <strong>{results.duration}</strong>. Ready by <strong>{results.endFormatted}</strong></>
+                            ) : (
+                                <>Start at <strong>{results.startFormatted}</strong> and charge for <strong>{results.duration}</strong>. Ready by <strong>{results.endFormatted}</strong></>
+                            )}
                             {!results.isWithinLimit && (
                                 <>
                                     <br />
                                     <span className="material-symbols-outlined warning-icon">warning</span>
-                                    Required amps ({results.requestedAmps}A) exceeds safe limit.{' '}
-                                    Using max safe amperage: <strong>{results.safeMaxAmps}A</strong>.
-                                    Charging will take longer.
+                                    Required amps ({results.requestedAmps}A) exceeds safe limit. Using max safe amperage: <strong>{results.safeMaxAmps}A</strong>.
                                 </>
                             )}
                         </span>

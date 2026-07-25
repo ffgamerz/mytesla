@@ -594,6 +594,110 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     background: var(--bg-input);
 }
 
+/* ---------- Schedule Mode Toggle ---------- */
+.schedule-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 12px 8px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--bg-input-border);
+    background: var(--bg-input);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.toggle-btn.active {
+    border-color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--accent-blue);
+}
+
+.toggle-btn:active {
+    transform: scale(0.98);
+}
+
+.toggle-icon {
+    font-size: 18px;
+}
+
+/* Amps Mode Toggle */
+.amps-mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.toggle-btn-sm {
+    flex: 1;
+    padding: 10px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--bg-input-border);
+    background: var(--bg-input);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.toggle-btn-sm.active {
+    border-color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--accent-blue);
+}
+
+.toggle-btn-sm:active {
+    transform: scale(0.98);
+}
+
+.toggle-icon-sm {
+    font-size: 16px;
+}
+
+.form-label-hint {
+    font-weight: 400;
+    color: var(--text-dim);
+    font-size: 11px;
+}
+
+.auto-amps-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(59, 130, 246, 0.08);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.auto-amps-icon {
+    font-size: 16px;
+    color: var(--accent-blue);
+}
+
+.auto-amps-info strong {
+    color: var(--accent-blue);
+}
+
 /* ---------- Geolocation Button ---------- */
 .geo-btn {
     display: flex;
