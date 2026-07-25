@@ -1,110 +1,96 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getLocations, saveLocation, deleteLocation } from '../../supabase/client';
+import { getLocations, saveLocation, updateLocation, deleteLocation } from '../../supabase/client';
 
-const DEFAULT_LOCATIONS = [
-    { id: 'home', name: 'Home', rate: 0.38, voltage: 240, icon: 'home', maxAmps: 32 },
-    { id: 'office', name: 'Office', rate: 0.45, voltage: 240, icon: 'business', maxAmps: 32 },
-    { id: 'supercharger', name: 'Supercharger', rate: 1.20, voltage: 480, icon: 'bolt', maxAmps: 500 },
-    { id: 'public_ac', name: 'Public AC', rate: 0.60, voltage: 240, icon: 'location_on', maxAmps: 32 },
-];
-
-function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
+function LocationRate({ selectedLocation, onLocationChange }) {
     const { user } = useAuth();
     const [showModal, setShowModal] = useState(false);
     const [dbLocations, setDbLocations] = useState([]);
-    const [isDetecting, setIsDetecting] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [editId, setEditId] = useState(null);
     const [editName, setEditName] = useState('');
     const [editRate, setEditRate] = useState('0.38');
     const [editVoltage, setEditVoltage] = useState('240');
     const [editMaxAmps, setEditMaxAmps] = useState('32');
-    const [editingLocationId, setEditingLocationId] = useState(null);
+    const [editIcon, setEditIcon] = useState('home');
     const [loading, setLoading] = useState(false);
+    const [initialLoad, setInitialLoad] = useState(true);
 
-    const allLocations = [...dbLocations, ...DEFAULT_LOCATIONS];
-    const [currentDbId, setCurrentDbId] = useState(
-        selectedLocation?.db_id || null
-    );
-
-    const currentLocation = selectedLocation || DEFAULT_LOCATIONS[0];
-
-    // Load locations from database
-    useEffect(() => {
-        if (user) {
-            loadDbLocations();
-        }
-    }, [user]);
-
-    const loadDbLocations = async () => {
+    // Load all locations from database
+    const loadLocations = async () => {
+        if (!user) return;
         try {
             const locs = await getLocations(user.id);
             setDbLocations(locs);
+
+            // Auto-select first location if none selected
+            if (initialLoad && locs.length > 0 && !selectedLocation) {
+                onLocationChange({
+                    db_id: locs[0].id,
+                    name: locs[0].name,
+                    rate: locs[0].rate,
+                    voltage: locs[0].voltage,
+                    maxAmps: locs[0].max_amps,
+                    icon: locs[0].icon || 'home',
+                });
+            }
+            setInitialLoad(false);
         } catch (e) {
             console.error('Failed to load locations:', e);
         }
     };
 
-    const handleDetectLocation = () => {
-        if (!navigator.geolocation) return;
-        setIsDetecting(true);
-        navigator.geolocation.getCurrentPosition(
-            () => setIsDetecting(false),
-            () => setIsDetecting(false),
-            { timeout: 10000 }
-        );
-    };
-
-    // Check if a location is from DB or default
-    const isDbLocation = (loc) => {
-        return loc.id && typeof loc.id === 'string' && loc.id.startsWith('db_');
-    };
+    useEffect(() => {
+        if (user) {
+            loadLocations();
+        }
+    }, [user]);
 
     const handleSelect = (loc) => {
-        // Set as current selection
-        const selected = {
-            ...loc,
-            db_id: loc.id?.toString() || null,
-        };
-        onLocationChange(selected);
+        onLocationChange({
+            db_id: loc.id,
+            name: loc.name,
+            rate: loc.rate,
+            voltage: loc.voltage,
+            maxAmps: loc.max_amps,
+            icon: loc.icon || 'home',
+        });
         setShowModal(false);
     };
 
-    const handleSaveNewLocation = async () => {
-        if (!user || !editName) return;
+    const handleSaveLocation = async () => {
+        if (!user || !editName.trim()) return;
         setLoading(true);
         try {
-            const newLoc = {
-                name: editName,
+            const locationData = {
+                name: editName.trim(),
                 rate: parseFloat(editRate) || 0.38,
                 voltage: parseInt(editVoltage) || 240,
                 max_amps: parseInt(editMaxAmps) || 32,
-                icon: 'location_on',
+                icon: editIcon,
             };
 
-            if (editingLocationId) {
+            if (editId) {
                 // Update existing
-                await deleteLocation(editingLocationId);
+                await updateLocation(editId, locationData);
+            } else {
+                // Insert new
+                await saveLocation(user.id, locationData);
             }
 
-            const saved = await saveLocation(user.id, newLoc);
-
             // Refresh list
-            await loadDbLocations();
+            await loadLocations();
 
-            // Auto-select the new location
-            onLocationChange({
-                id: `db_${saved.id}`,
-                db_id: saved.id,
-                name: saved.name,
-                rate: saved.rate,
-                voltage: saved.voltage,
-                maxAmps: saved.max_amps,
-                icon: saved.icon,
-            });
+            // Auto-select if it was the edited one or newly created
+            if (editId && selectedLocation?.db_id === editId) {
+                onLocationChange({
+                    db_id: editId,
+                    ...locationData,
+                });
+            }
 
             setIsEditing(false);
-            setEditingLocationId(null);
+            setEditId(null);
             setShowModal(false);
         } catch (e) {
             console.error('Failed to save location:', e);
@@ -112,39 +98,51 @@ function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
         setLoading(false);
     };
 
-    const handleDeleteLocation = async (loc) => {
-        if (!user || !loc.db_id) return;
+    const handleDeleteLocation = async (locId) => {
+        if (!user) return;
         try {
-            await deleteLocation(loc.db_id);
-            await loadDbLocations();
+            await deleteLocation(locId);
+            await loadLocations();
 
-            // If deleted location was selected, reset to Home
-            if (selectedLocation?.db_id === loc.db_id) {
-                onLocationChange(DEFAULT_LOCATIONS[0]);
+            // If deleted location was selected, select the first available
+            if (selectedLocation?.db_id === locId) {
+                const remaining = dbLocations.filter(l => l.id !== locId);
+                if (remaining.length > 0) {
+                    handleSelect(remaining[0]);
+                }
             }
         } catch (e) {
             console.error('Failed to delete location:', e);
         }
     };
 
-    const handleOpen = () => {
-        setIsEditing(false);
-        setEditingLocationId(null);
+    const startEdit = (loc) => {
+        setEditId(loc.id);
+        setEditName(loc.name);
+        setEditRate(loc.rate.toString());
+        setEditVoltage(loc.voltage.toString());
+        setEditMaxAmps(loc.max_amps.toString());
+        setEditIcon(loc.icon || 'home');
+        setIsEditing(true);
+    };
+
+    const startNew = () => {
+        setEditId(null);
         setEditName('');
         setEditRate('0.38');
         setEditVoltage('240');
         setEditMaxAmps('32');
+        setEditIcon('location_on');
+        setIsEditing(true);
+    };
+
+    const handleOpen = () => {
+        setIsEditing(false);
+        setEditId(null);
         setShowModal(true);
     };
 
-    const startEdit = (loc) => {
-        setEditingLocationId(loc.db_id);
-        setEditName(loc.name);
-        setEditRate(loc.rate.toString());
-        setEditVoltage(loc.voltage.toString());
-        setEditMaxAmps(loc.maxAmps.toString());
-        setIsEditing(true);
-    };
+    const currentLocation = selectedLocation || { name: 'Select Location', rate: 0, voltage: 240, icon: 'home' };
 
     // Modal
     if (showModal) {
@@ -156,7 +154,7 @@ function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
                     {isEditing ? (
                         <>
                             <div className="modal-title">
-                                {editingLocationId ? 'Edit Location' : 'New Custom Location'}
+                                {editId ? 'Edit Location' : 'New Location'}
                             </div>
 
                             <div className="form-group">
@@ -164,7 +162,7 @@ function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
                                 <input
                                     type="text"
                                     className="form-control-custom"
-                                    placeholder="e.g. KL Office"
+                                    placeholder="e.g. My Home"
                                     value={editName}
                                     onChange={e => setEditName(e.target.value)}
                                 />
@@ -211,17 +209,14 @@ function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
 
                             <button
                                 className="btn-primary-custom mt-3"
-                                onClick={handleSaveNewLocation}
-                                disabled={loading || !editName}
+                                onClick={handleSaveLocation}
+                                disabled={loading || !editName.trim()}
                             >
                                 <span className="material-symbols-outlined">save</span>
-                                {loading ? 'Saving...' : 'Save Location'}
+                                {loading ? 'Saving...' : editId ? 'Update Location' : 'Add Location'}
                             </button>
 
-                            <button
-                                className="modal-close-btn"
-                                onClick={() => setIsEditing(false)}
-                            >
+                            <button className="modal-close-btn" onClick={() => setIsEditing(false)}>
                                 Back
                             </button>
                         </>
@@ -229,114 +224,54 @@ function LocationRate({ selectedLocation, onLocationChange, onCloseModal }) {
                         <>
                             <div className="modal-title">Select Location</div>
 
-                            <button
-                                className="geo-btn"
-                                onClick={handleDetectLocation}
-                                disabled={isDetecting}
-                            >
-                                <span className="material-symbols-outlined geo-btn-icon">my_location</span>
-                                {isDetecting ? 'Detecting...' : 'Detect My Location'}
-                            </button>
-
-                            {/* Saved Locations */}
-                            {dbLocations.length > 0 && (
-                                <>
-                                    <div className="modal-section-label">Saved Locations</div>
-                                    {dbLocations.map(loc => (
-                                        <div key={loc.id} className="modal-option-wrap">
-                                            <button
-                                                className={`modal-option ${selectedLocation?.db_id === loc.id ? 'selected' : ''}`}
-                                                onClick={() => handleSelect({
-                                                    id: `db_${loc.id}`,
-                                                    db_id: loc.id,
-                                                    name: loc.name,
-                                                    rate: loc.rate,
-                                                    voltage: loc.voltage,
-                                                    maxAmps: loc.max_amps,
-                                                    icon: loc.icon || 'location_on',
-                                                })}
-                                            >
-                                                <span className="material-symbols-outlined modal-option-icon">
-                                                    {loc.icon || 'location_on'}
-                                                </span>
-                                                <div className="modal-option-info">
-                                                    <div className="modal-option-label">{loc.name}</div>
-                                                    <div className="modal-option-sub">
-                                                        RM {loc.rate.toFixed(2)}/kWh &middot; {loc.voltage}V &middot; Max {loc.max_amps}A
-                                                    </div>
+                            {dbLocations.length === 0 ? (
+                                <div className="history-empty">
+                                    <span className="material-symbols-outlined empty-icon">location_off</span>
+                                    <p>No locations yet.</p>
+                                    <p className="text-muted">Add your first charging location!</p>
+                                </div>
+                            ) : (
+                                dbLocations.map(loc => (
+                                    <div key={loc.id} className="modal-option-wrap">
+                                        <button
+                                            className={`modal-option ${selectedLocation?.db_id === loc.id ? 'selected' : ''}`}
+                                            onClick={() => handleSelect(loc)}
+                                        >
+                                            <span className="material-symbols-outlined modal-option-icon">
+                                                {loc.icon || 'home'}
+                                            </span>
+                                            <div className="modal-option-info">
+                                                <div className="modal-option-label">{loc.name}</div>
+                                                <div className="modal-option-sub">
+                                                    RM {loc.rate.toFixed(2)}/kWh &middot; {loc.voltage}V &middot; Max {loc.max_amps}A
                                                 </div>
-                                                {selectedLocation?.db_id === loc.id && (
-                                                    <span className="tag tag-blue">Active</span>
-                                                )}
-                                            </button>
-                                            <div className="modal-option-actions">
-                                                <button
-                                                    className="action-btn"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        startEdit({
-                                                            db_id: loc.id,
-                                                            name: loc.name,
-                                                            rate: loc.rate,
-                                                            voltage: loc.voltage,
-                                                            maxAmps: loc.max_amps,
-                                                        });
-                                                    }}
-                                                >
-                                                    <span className="material-symbols-outlined">edit</span>
-                                                </button>
-                                                <button
-                                                    className="action-btn danger"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteLocation({ db_id: loc.id });
-                                                    }}
-                                                >
-                                                    <span className="material-symbols-outlined">delete</span>
-                                                </button>
                                             </div>
-                                        </div>
-                                    ))}
-                                </>
-                            )}
-
-                            <div className="modal-section-label">Default Locations</div>
-                            {DEFAULT_LOCATIONS.map(loc => (
-                                <button
-                                    key={loc.id}
-                                    className={`modal-option ${selectedLocation?.id === loc.id && !selectedLocation?.db_id ? 'selected' : ''}`}
-                                    onClick={() => handleSelect(loc)}
-                                >
-                                    <span className="material-symbols-outlined modal-option-icon">{loc.icon}</span>
-                                    <div className="modal-option-info">
-                                        <div className="modal-option-label">{loc.name}</div>
-                                        <div className="modal-option-sub">
-                                            RM {loc.rate.toFixed(2)}/kWh &middot; {loc.voltage}V &middot; Max {loc.maxAmps}A
+                                            {selectedLocation?.db_id === loc.id && (
+                                                <span className="tag tag-blue">Active</span>
+                                            )}
+                                        </button>
+                                        <div className="modal-option-actions">
+                                            <button className="action-btn" onClick={() => startEdit(loc)}>
+                                                <span className="material-symbols-outlined">edit</span>
+                                            </button>
+                                            <button
+                                                className="action-btn danger"
+                                                onClick={() => handleDeleteLocation(loc.id)}
+                                            >
+                                                <span className="material-symbols-outlined">delete</span>
+                                            </button>
                                         </div>
                                     </div>
-                                    {selectedLocation?.id === loc.id && !selectedLocation?.db_id && (
-                                        <span className="tag tag-blue">Active</span>
-                                    )}
-                                </button>
-                            ))}
+                                ))
+                            )}
 
-                            <button
-                                className="btn-save mt-3"
-                                onClick={() => {
-                                    setIsEditing(true);
-                                    setEditingLocationId(null);
-                                    setEditName('');
-                                    setEditRate('0.38');
-                                    setEditVoltage('240');
-                                    setEditMaxAmps('32');
-                                }}
-                            >
+                            <button className="btn-save mt-3" onClick={startNew}>
                                 <span className="material-symbols-outlined btn-save-icon">add_location</span>
-                                Add Custom Location
+                                Add New Location
                             </button>
 
                             <button className="modal-close-btn" onClick={() => setShowModal(false)}>
-                                Cancel
+                                Close
                             </button>
                         </>
                     )}

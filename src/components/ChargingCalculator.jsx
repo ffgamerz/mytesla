@@ -29,14 +29,7 @@ function ChargingCalculator() {
     const [selectedModelId, setSelectedModelId] = useState(DEFAULT_MODEL.id);
     const [currentPct, setCurrentPct] = useState(45);
     const [targetPct, setTargetPct] = useState(100);
-    const [location, setLocation] = useState({
-        id: 'home',
-        name: 'Home',
-        rate: 0.38,
-        voltage: 240,
-        icon: 'home',
-        maxAmps: 32,
-    });
+    const [location, setLocation] = useState(null);
     const [scheduleMode, setScheduleMode] = useState(SCHEDULE_MODES.COMPLETION);
     const [hasCalculated, setHasCalculated] = useState(false);
     const [results, setResults] = useState(null);
@@ -66,6 +59,7 @@ function ChargingCalculator() {
     );
 
     const handleCalculate = useCallback(() => {
+        if (!location) return;
         const safeMaxAmps = calcSafeAmps(location.maxAmps);
 
         if (scheduleMode === SCHEDULE_MODES.COMPLETION) {
@@ -152,10 +146,10 @@ function ChargingCalculator() {
 
     // Auto-calculate on input changes
     useEffect(() => {
-        if (hasCalculated) {
+        if (hasCalculated && location) {
             handleCalculate();
         }
-    }, [selectedModelId, currentPct, targetPct, scheduleMode, completionDate, completionTime, startDate, startTime, manualAmps, ampsMode, location.rate, location.maxAmps, hasCalculated]);
+    }, [selectedModelId, currentPct, targetPct, scheduleMode, completionDate, completionTime, startDate, startTime, manualAmps, ampsMode, location?.rate, location?.maxAmps, hasCalculated]);
 
     return (
         <div className="app-container">

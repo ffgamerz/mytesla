@@ -83,6 +83,21 @@ export async function saveLocation(userId, location) {
 }
 
 /**
+ * Update a location
+ */
+export async function updateLocation(locationId, updates) {
+    const { data, error } = await supabase
+        .from('tesla_locations')
+        .update(updates)
+        .eq('id', locationId)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+/**
  * Delete a location
  */
 export async function deleteLocation(locationId) {
