@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import teslaModels from '../data/teslaModels';
 import LocationRate from './LocationRate';
+import SavePlan from './SavePlan';
+import { useAuth } from '../context/AuthContext';
 import {
     calcEnergyNeeded,
     calcRequiredAmps,
@@ -23,6 +25,7 @@ const SCHEDULE_MODES = {
 };
 
 function ChargingCalculator() {
+    const { user, signOut } = useAuth();
     const [selectedModelId, setSelectedModelId] = useState(DEFAULT_MODEL.id);
     const [currentPct, setCurrentPct] = useState(45);
     const [targetPct, setTargetPct] = useState(100);
@@ -490,6 +493,21 @@ function ChargingCalculator() {
                 </div>
             )}
 
+            {/* Save Plan */}
+            <SavePlan
+                currentState={{
+                    selectedModelId,
+                    currentPct,
+                    targetPct,
+                    scheduleMode,
+                    completionDate,
+                    completionTime,
+                    startDate,
+                    startTime,
+                }}
+                results={results}
+            />
+
             {/* Bottom Nav Dots */}
             {!hasCalculated && (
                 <div className="bottom-nav">
@@ -498,6 +516,15 @@ function ChargingCalculator() {
                     <div className="bottom-nav-dot"></div>
                 </div>
             )}
+
+            {/* Sign Out & User Info */}
+            <div className="user-footer">
+                <div className="user-email">{user?.email}</div>
+                <button className="btn-signout" onClick={signOut}>
+                    <span className="material-symbols-outlined">logout</span>
+                    Sign Out
+                </button>
+            </div>
         </div>
     );
 }
