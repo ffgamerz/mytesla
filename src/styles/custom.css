@@ -556,6 +556,63 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     background: rgba(59, 130, 246, 0.12);
 }
 
+.modal-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    margin-top: 4px;
+}
+
+.modal-option-wrap {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.modal-option-wrap .modal-option {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.modal-option-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    justify-content: center;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--bg-input-border);
+    background: var(--bg-input);
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.action-btn.danger:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.action-btn span {
+    font-size: 16px;
+}
+
 .modal-option-icon {
     font-size: 22px;
 }

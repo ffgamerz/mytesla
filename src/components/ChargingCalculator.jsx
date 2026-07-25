@@ -504,6 +504,7 @@ function ChargingCalculator() {
                     completionTime,
                     startDate,
                     startTime,
+                    location,
                 }}
                 results={results}
             />

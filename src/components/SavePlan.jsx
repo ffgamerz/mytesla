@@ -64,7 +64,8 @@ function SavePlan({ currentState, results }) {
                 duration_minutes: Math.round(results.durationHours * 60),
                 energy_kwh: results.energyNeeded,
                 cost_rm: results.totalCost,
-                notes: `${currentState.selectedModelId} ${currentState.currentPct}% → ${currentState.targetPct}%`,
+                location_id: currentState.location?.db_id || null,
+                notes: `${currentState.location?.name || 'Home'} · ${currentState.selectedModelId} ${currentState.currentPct}% → ${currentState.targetPct}%`,
             };
             await saveChargingRecord(user.id, record);
             setSaved(true);
