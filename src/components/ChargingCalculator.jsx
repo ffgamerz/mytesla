@@ -18,6 +18,7 @@ import {
     getTodayDateStr,
     formatDateTime,
     calcEstimatedRangeAtTarget,
+    timeAgo,
 } from '../utils/calculations';
 
 const DEFAULT_MODEL = teslaModels[0]; // Model 3
@@ -208,6 +209,16 @@ function ChargingCalculator({ onNavigateSettings }) {
         });
     }, []);
 
+    // State to force re-render for timeAgo updates
+    const [, setTick] = useState(0);
+    
+    // Update timeAgo every 30 seconds
+    useEffect(() => {
+        if (!teslaTimestamp) return;
+        const interval = setInterval(() => setTick(t => t + 1), 30000);
+        return () => clearInterval(interval);
+    }, [teslaTimestamp]);
+
     // Estimated range at target
     const rangeAtTarget = teslaRange ? calcEstimatedRangeAtTarget(teslaRange, currentPct, targetPct) : null;
 
@@ -302,7 +313,7 @@ function ChargingCalculator({ onNavigateSettings }) {
                     />
                     {teslaTimestamp && (
                         <div className="tesla-timestamp">
-                            Last updated: {new Date(teslaTimestamp).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                            Last updated: {timeAgo(teslaTimestamp)}
                         </div>
                     )}
                 </div>

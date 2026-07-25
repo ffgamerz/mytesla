@@ -249,6 +249,46 @@ export function calcMinTime(energyKwh, voltage, maxAmps) {
 }
 
 /**
+ * Format a timestamp as relative time (e.g. "10 minutes ago", "1 hour ago", "1 day 3 hours 25 minutes ago")
+ * @param {string|Date} dateStr - ISO date string or Date object
+ * @returns {string} Relative time string
+ */
+export function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const now = Date.now();
+    const date = new Date(dateStr);
+    const diffMs = now - date.getTime();
+    
+    if (diffMs < 0) return 'just now';
+    
+    const seconds = Math.floor(diffMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (seconds < 10) return 'just now';
+    if (seconds < 60) return `${seconds} seconds ago`;
+    if (minutes < 60) {
+        if (minutes === 1) return '1 minute ago';
+        return `${minutes} minutes ago`;
+    }
+    if (hours < 24) {
+        if (hours === 1) return '1 hour ago';
+        const mins = minutes % 60;
+        if (mins === 0) return `${hours} hours ago`;
+        return `${hours} hours ${mins} minutes ago`;
+    }
+    
+    if (days === 1) return '1 day ago';
+    const h = hours % 24;
+    const m = minutes % 60;
+    let result = `${days} days`;
+    if (h > 0) result += ` ${h} hours`;
+    if (m > 0 && days < 7) result += ` ${m} minutes`;
+    return result + ' ago';
+}
+
+/**
  * Get today's date as YYYY-MM-DD string
  * @returns {string}
  */
