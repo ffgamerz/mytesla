@@ -8,8 +8,11 @@ import {
     calcChargingTime,
     calcCost,
     formatDuration,
-    calcStartTime,
+    calcChargeSchedule,
+    calcHoursAvailable,
     calcSafeAmps,
+    getTodayDateStr,
+    getTomorrowDateStr,
 } from '../utils/calculations';
 
 const DEFAULT_MODEL = teslaModels[0]; // Model 3
@@ -18,6 +21,7 @@ function ChargingCalculator() {
     const [selectedModelId, setSelectedModelId] = useState(DEFAULT_MODEL.id);
     const [currentPct, setCurrentPct] = useState(45);
     const [targetPct, setTargetPct] = useState(100);
+    const [targetDate, setTargetDate] = useState(getTodayDateStr());
     const [targetTime, setTargetTime] = useState('08:00');
     const [location, setLocation] = useState({
         id: 'home',
@@ -40,19 +44,7 @@ function ChargingCalculator() {
     );
 
     const handleCalculate = useCallback(() => {
-        // Calculate time available
-        const now = new Date();
-        const [th, tm] = targetTime.split(':').map(Number);
-        const targetDate = new Date();
-        targetDate.setHours(th, tm, 0, 0);
-
-        // If target is before now, assume next day
-        if (targetDate <= now) {
-            targetDate.setDate(targetDate.getDate() + 1);
-        }
-
-        const diffMs = targetDate - now;
-        const hoursAvailable = diffMs / (1000 * 60 * 60);
+        const hoursAvailable = calcHoursAvailable(targetDate, targetTime);
 
         if (hoursAvailable <= 0 || energyNeeded <= 0) {
             setResults(null);
@@ -76,7 +68,14 @@ function ChargingCalculator() {
         // Recalculate with actual amperage
         const actualPower = calcChargingPower(location.voltage, actualAmps);
         const actualDuration = calcChargingTime(energyNeeded, actualPower);
-        const startTime = calcStartTime(targetTime, actualDuration);
+
+        // Get schedule with dates
+        const schedule = calcChargeSchedule(targetDate, targetTime, actualDuration);
+
+        // Calculate what time it would finish if we start now at these amps
+        const finishIfStartNow = new Date();
+        finishIfStartNow.setHours(finishIfStartNow.getHours() + actualDuration);
+
         const totalCost = calcCost(energyNeeded, location.rate);
 
         setResults({
@@ -84,7 +83,9 @@ function ChargingCalculator() {
             requestedAmps: Math.round(requiredAmps * 10) / 10,
             duration: formatDuration(actualDuration),
             durationHours: actualDuration,
-            startTime,
+            startFormatted: schedule.startFormatted,
+            endFormatted: schedule.endFormatted,
+            endDateLong: schedule.endDateLong,
             energyNeeded: Math.round(energyNeeded * 100) / 100,
             totalCost: Math.round(totalCost * 100) / 100,
             isWithinLimit: requiredAmps <= safeMaxAmps,
@@ -92,14 +93,14 @@ function ChargingCalculator() {
         });
 
         setHasCalculated(true);
-    }, [energyNeeded, targetTime, location]);
+    }, [energyNeeded, targetDate, targetTime, location]);
 
     // Auto-calculate on input changes
     useEffect(() => {
         if (hasCalculated) {
             handleCalculate();
         }
-    }, [selectedModelId, currentPct, targetPct, targetTime, location.rate, hasCalculated]);
+    }, [selectedModelId, currentPct, targetPct, targetDate, targetTime, location.rate, location.maxAmps, hasCalculated]);
 
     return (
         <div className="app-container">
@@ -211,7 +212,18 @@ function ChargingCalculator() {
                 </div>
 
                 <div className="form-group">
-                    <label className="form-label">Ready by</label>
+                    <label className="form-label">Target Date</label>
+                    <input
+                        type="date"
+                        className="form-control-custom"
+                        value={targetDate}
+                        onChange={e => setTargetDate(e.target.value)}
+                        min={getTodayDateStr()}
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Ready by (Time)</label>
                     <input
                         type="time"
                         className="form-control-custom"
@@ -284,7 +296,15 @@ function ChargingCalculator() {
                                 <span className="material-symbols-outlined result-icon">wb_twilight</span>
                                 Start Charging
                             </span>
-                            <span className="result-value green">{results.startTime}</span>
+                            <span className="result-value green">{results.startFormatted}</span>
+                        </div>
+
+                        <div className="result-item">
+                            <span className="result-label">
+                                <span className="material-symbols-outlined result-icon">check_circle</span>
+                                Will Complete
+                            </span>
+                            <span className="result-value green">{results.endFormatted}</span>
                         </div>
 
                         <div className="result-item">
@@ -299,9 +319,9 @@ function ChargingCalculator() {
                     <div className="info-box">
                         <span className="material-symbols-outlined info-icon">lightbulb</span>
                         <span>
-                            Plug in at <strong>{results.startTime}</strong> for{' '}
-                            <strong>{results.duration}</strong> to reach {targetPct}% by{' '}
-                            <strong>{targetTime}</strong>
+                            Plug in at <strong>{results.startFormatted}</strong> for{' '}
+                            <strong>{results.duration}</strong>. Car will be ready by{' '}
+                            <strong>{results.endFormatted}</strong>
                             {!results.isWithinLimit && (
                                 <>
                                     <br />

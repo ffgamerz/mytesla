@@ -82,25 +82,97 @@ export function formatDuration(hours) {
 }
 
 /**
- * Calculate start time given target time and duration
- * @param {string} targetTime - Time string in "HH:MM" format
- * @param {number} durationHours - Charging duration in hours
- * @returns {string} Start time in "HH:MM AM/PM" format
+ * Format a Date object to a readable string
+ * @param {Date} date
+ * @returns {string} Formatted like "Mon, 25 Jul · 5:45 AM"
  */
-export function calcStartTime(targetTime, durationHours) {
-    const [hours, minutes] = targetTime.split(':').map(Number);
-    const targetDate = new Date();
-    targetDate.setHours(hours, minutes, 0, 0);
-
-    const startMs = targetDate.getTime() - (durationHours * 60 * 60 * 1000);
-    const startDate = new Date(startMs);
-
-    const h = startDate.getHours();
-    const m = startDate.getMinutes();
+export function formatDateTime(date) {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    const day = days[date.getDay()];
+    const dateNum = date.getDate();
+    const month = months[date.getMonth()];
+    
+    const h = date.getHours();
+    const m = date.getMinutes();
     const ampm = h >= 12 ? 'PM' : 'AM';
     const hour12 = h % 12 || 12;
+    
+    return `${day}, ${dateNum} ${month} · ${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
 
-    return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+/**
+ * Format a Date object to short date + time
+ * @param {Date} date
+ * @returns {string} Formatted like "25 Jul 2026, 5:45 AM"
+ */
+export function formatDateLong(date) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dateNum = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    const h = date.getHours();
+    const m = date.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    
+    return `${dateNum} ${month} ${year}, ${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+/**
+ * Calculate start time given target date/time and duration
+ * @param {string} targetDateStr - Target date string in "YYYY-MM-DD" format
+ * @param {string} targetTimeStr - Target time string in "HH:MM" format
+ * @param {number} durationHours - Charging duration in hours
+ * @returns {{ startDate: Date, endDate: Date, startFormatted: string, endFormatted: string }}
+ */
+export function calcChargeSchedule(targetDateStr, targetTimeStr, durationHours) {
+    const [th, tm] = targetTimeStr.split(':').map(Number);
+    const [ty, tmon, tday] = targetDateStr.split('-').map(Number);
+    
+    // Target date/time (when charging should complete)
+    const endDate = new Date(ty, tmon - 1, tday, th, tm, 0);
+    
+    // If end date is in the past, move to next day
+    const now = new Date();
+    if (endDate <= now) {
+        endDate.setDate(endDate.getDate() + 1);
+    }
+    
+    // Start date = end date minus duration
+    const startMs = endDate.getTime() - (durationHours * 60 * 60 * 1000);
+    const startDate = new Date(startMs);
+    
+    return {
+        startDate,
+        endDate,
+        startFormatted: formatDateTime(startDate),
+        endFormatted: formatDateTime(endDate),
+        endDateLong: formatDateLong(endDate),
+    };
+}
+
+/**
+ * Calculate available hours between now and target
+ * @param {string} targetDateStr - Target date string in "YYYY-MM-DD"
+ * @param {string} targetTimeStr - Target time string in "HH:MM"
+ * @returns {number} Hours available
+ */
+export function calcHoursAvailable(targetDateStr, targetTimeStr) {
+    const now = new Date();
+    const [th, tm] = targetTimeStr.split(':').map(Number);
+    const [ty, tmon, tday] = targetDateStr.split('-').map(Number);
+    
+    let targetDate = new Date(ty, tmon - 1, tday, th, tm, 0);
+    
+    // If target is in the past, use tomorrow
+    if (targetDate <= now) {
+        targetDate.setDate(targetDate.getDate() + 1);
+    }
+    
+    return (targetDate - now) / (1000 * 60 * 60);
 }
 
 /**
@@ -141,4 +213,23 @@ export function isValidAmperage(amps, maxAmps) {
 export function calcMinTime(energyKwh, voltage, maxAmps) {
     const maxPower = calcChargingPower(voltage, maxAmps);
     return calcChargingTime(energyKwh, maxPower);
+}
+
+/**
+ * Get today's date as YYYY-MM-DD string
+ * @returns {string}
+ */
+export function getTodayDateStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Get tomorrow's date as YYYY-MM-DD string
+ * @returns {string}
+ */
+export function getTomorrowDateStr() {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
