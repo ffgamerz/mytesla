@@ -107,8 +107,8 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
                 }
             }
 
-            if (nearest && nearestDist < 10) {
-                // Within 10 meters - auto-select
+            if (nearest && nearestDist < 100) {
+                // Within 100 meters - auto-select
                 if (selectedLocation?.db_id !== nearest.id) {
                     onLocationChange(formatLoc(nearest));
                 }
