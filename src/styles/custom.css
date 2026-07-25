@@ -1420,6 +1420,426 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     font-size: 14px;
 }
 
+/* ---------- Header Title Row (with Settings Icon) ---------- */
+.header-title-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.header-title-row h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.btn-settings-icon {
+    position: absolute;
+    right: 0;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-settings-icon:hover {
+    color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.btn-settings-icon span {
+    font-size: 22px;
+}
+
+/* ---------- Tesla Pull Button ---------- */
+.tesla-pull-wrapper {
+    margin-top: 12px;
+}
+
+.tesla-pull-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--accent-blue);
+    background: rgba(59, 130, 246, 0.06);
+    color: var(--accent-blue);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.tesla-pull-btn:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.14);
+    border-style: solid;
+}
+
+.tesla-pull-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tesla-pull-btn:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.tesla-pull-btn span {
+    font-size: 18px;
+}
+
+/* ---------- Back Button (Settings Page) ---------- */
+.btn-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+    padding: 8px 0;
+    margin-bottom: 8px;
+    transition: color 0.2s;
+}
+
+.btn-back:hover {
+    color: var(--accent-blue);
+}
+
+.btn-back span {
+    font-size: 20px;
+}
+
+/* ---------- Tesla Settings: Status Badge ---------- */
+.tesla-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+.tesla-status-badge.connected {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    color: var(--accent-green);
+}
+
+.tesla-status-badge.disconnected {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.tesla-status-badge span {
+    font-size: 20px;
+}
+
+/* ---------- Tesla Settings: Vehicle Preview ---------- */
+.tesla-vehicle-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg-input);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--bg-input-border);
+    margin-bottom: 12px;
+}
+
+.tesla-vehicle-preview-icon {
+    width: 42px;
+    height: 42px;
+    background: rgba(59, 130, 246, 0.12);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tesla-vehicle-preview-icon span {
+    font-size: 24px;
+    color: var(--accent-blue);
+}
+
+.tesla-vehicle-preview-info {
+    flex: 1;
+}
+
+.tesla-vehicle-preview-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.tesla-vehicle-preview-vin {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: monospace;
+    margin-bottom: 6px;
+}
+
+.tesla-vehicle-preview-stats {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tesla-vehicle-preview-stats .tag {
+    font-size: 10px;
+}
+
+/* ---------- Tesla Settings: Info Row ---------- */
+.tesla-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 12px;
+}
+
+.tesla-info-label {
+    color: var(--text-muted);
+}
+
+.tesla-info-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* ---------- Tesla Settings: Hint Text ---------- */
+.tesla-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin: 0 0 14px;
+}
+
+/* ---------- Tesla Settings: Code Block ---------- */
+.tesla-code {
+    display: block;
+    font-size: 11px;
+    padding: 6px 8px;
+    margin: 4px 0;
+    background: #1a1a1a;
+    border-radius: 4px;
+    word-break: break-all;
+    font-family: monospace;
+    color: var(--accent-green);
+    line-height: 1.5;
+}
+
+/* ---------- Tesla Settings: Token Input ---------- */
+.tesla-token-input {
+    resize: vertical;
+    min-height: 80px;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+/* ---------- Tesla Settings: Message ---------- */
+.tesla-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 14px;
+}
+
+.tesla-message span {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.tesla-message-success {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    color: var(--accent-green);
+}
+
+.tesla-message-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #f87171;
+}
+
+/* ---------- Tesla Settings: Actions ---------- */
+.tesla-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.tesla-actions .btn-primary-custom,
+.tesla-actions .btn-save,
+.tesla-actions .btn-danger {
+    margin-bottom: 0;
+}
+
+.btn-danger {
+    width: 100%;
+    padding: 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: var(--danger);
+}
+
+.btn-danger:active {
+    transform: scale(0.98);
+}
+
+/* ---------- Connect with Tesla Button ---------- */
+.btn-connect-tesla {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #e82127, #c41e22);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-family);
+    box-shadow: 0 4px 16px rgba(232, 33, 39, 0.3);
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-connect-tesla:hover {
+    background: linear-gradient(135deg, #d41c22, #a8181c);
+    box-shadow: 0 4px 20px rgba(232, 33, 39, 0.4);
+}
+
+.btn-connect-tesla:active {
+    transform: scale(0.98);
+}
+
+.btn-connect-tesla:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ---------- Tesla Toast Notification ---------- */
+.tesla-toast {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 420px;
+    width: calc(100% - 32px);
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 9999;
+    animation: slideDown 0.3s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    line-height: 1.4;
+}
+
+.tesla-toast-success {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: var(--accent-green);
+    backdrop-filter: blur(12px);
+}
+
+.tesla-toast-error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    backdrop-filter: blur(12px);
+}
+
+.tesla-toast span {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: currentColor;
+    cursor: pointer;
+    padding: 4px;
+    margin-left: auto;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+
+.toast-close span {
+    font-size: 18px;
+}
+
+@keyframes slideDown {
+    from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ---------- Loading Card ---------- */
+.loading-card {
+    background: var(--bg-card);
+    border: 1px solid var(--bg-card-border);
+    border-radius: var(--radius-lg);
+    padding: 40px 20px;
+    margin-bottom: 14px;
+    text-align: center;
+}
+
 /* ---------- Utility ---------- */
 .mt-1 { margin-top: 4px; }
 .mt-2 { margin-top: 8px; }

@@ -150,4 +150,73 @@ export async function deleteChargingRecord(recordId) {
     if (error) throw error;
 }
 
+/**
+ * Get Tesla connection settings for a user
+ */
+export async function getTeslaSettings(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('tesla_user_settings')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        if (error && error.code === 'PGRST116') return null;
+        if (error) throw error;
+
+        return {
+            tesla_client_id: data?.tesla_client_id || null,
+            tesla_refresh_token: data?.tesla_refresh_token || null,
+            tesla_access_token: data?.tesla_access_token || null,
+            tesla_token_expiry: data?.tesla_token_expiry || null,
+            tesla_vehicle_vin: data?.tesla_vehicle_vin || null,
+            tesla_vehicle_name: data?.tesla_vehicle_name || null,
+            tesla_last_sync: data?.tesla_last_sync || null,
+            tesla_connected: data?.tesla_connected || false,
+        };
+    } catch (e) {
+        console.warn('getTeslaSettings failed:', e?.message || e);
+        return null;
+    }
+}
+
+/**
+ * Update Tesla connection settings
+ */
+export async function updateTeslaSettings(userId, updates) {
+    const { data, error } = await supabase
+        .from('tesla_user_settings')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+/**
+ * Disconnect Tesla (clear credentials)
+ */
+export async function disconnectTesla(userId) {
+    const { data, error } = await supabase
+        .from('tesla_user_settings')
+        .update({
+            tesla_client_id: null,
+            tesla_refresh_token: null,
+            tesla_access_token: null,
+            tesla_token_expiry: null,
+            tesla_vehicle_vin: null,
+            tesla_vehicle_name: null,
+            tesla_last_sync: null,
+            tesla_connected: false,
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
 export default supabase;

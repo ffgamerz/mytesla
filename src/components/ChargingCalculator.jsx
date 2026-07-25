@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import teslaModels from '../data/teslaModels';
 import LocationRate from './LocationRate';
 import SavePlan from './SavePlan';
+import TeslaPullButton from './TeslaPullButton';
 import { useAuth } from '../context/AuthContext';
 import {
     calcEnergyNeeded,
@@ -24,7 +25,7 @@ const SCHEDULE_MODES = {
     START: 'start',
 };
 
-function ChargingCalculator() {
+function ChargingCalculator({ onNavigateSettings }) {
     const { user, signOut } = useAuth();
     const [selectedModelId, setSelectedModelId] = useState(DEFAULT_MODEL.id);
     const [currentPct, setCurrentPct] = useState(45);
@@ -151,6 +152,18 @@ function ChargingCalculator() {
         }
     }, [selectedModelId, currentPct, targetPct, scheduleMode, completionDate, completionTime, startDate, startTime, manualAmps, ampsMode, location?.rate, location?.maxAmps, hasCalculated]);
 
+    const handleTeslaDataReceived = useCallback((data) => {
+        // Auto-populate battery level from Tesla data
+        if (data.battery_level !== undefined) {
+            setCurrentPct(data.battery_level);
+        }
+        setHasCalculated(false);
+    }, []);
+
+    const handleTeslaError = useCallback((errorMsg) => {
+        alert(errorMsg);
+    }, []);
+
     return (
         <div className="app-container">
             {/* Header */}
@@ -158,7 +171,12 @@ function ChargingCalculator() {
                 <div className="app-header-icon">
                     <span className="material-symbols-outlined header-icon-symbol">bolt</span>
                 </div>
-                <h1>My Tesla Monitor</h1>
+                <div className="header-title-row">
+                    <h1>My Tesla Monitor</h1>
+                    <button className="btn-settings-icon" onClick={onNavigateSettings} title="Tesla Settings">
+                        <span className="material-symbols-outlined">settings</span>
+                    </button>
+                </div>
                 <p>Charging Calculator</p>
             </div>
 
@@ -220,6 +238,13 @@ function ChargingCalculator() {
                             <span>{Math.round(energyNeeded)} kWh needed</span>
                         </div>
                     </div>
+                </div>
+
+                <div className="tesla-pull-wrapper">
+                    <TeslaPullButton
+                        onDataReceived={handleTeslaDataReceived}
+                        onError={handleTeslaError}
+                    />
                 </div>
 
                 <div className="form-group mt-4">
