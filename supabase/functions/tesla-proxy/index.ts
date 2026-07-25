@@ -52,7 +52,7 @@ async function handleAuth(req: Request): Promise<Response> {
     const sid = crypto.randomUUID();
     await db().from('tesla_oauth_state').insert({ id: sid, code_verifier: verifier, user_id: uid });
 
-    const url = `${AUTH}/authorize?response_type=code&client_id=${CID}&redirect_uri=${APP}/callback&code_challenge=${challenge}&code_challenge_method=S256&state=${sid}&scope=openid+vehicle_device_data+vehicle_charging_cmds+vehicle_fleet_api+offline_access`;
+    const url = `${AUTH}/authorize?response_type=code&client_id=${CID}&redirect_uri=${APP}/callback&code_challenge=${challenge}&code_challenge_method=S256&state=${sid}&scope=openid+vehicle_device_data+vehicle_charging_cmds+vehicle_fleet_api+vehicle_location+offline_access`;
 
     return new Response(null, { status: 302, headers: new Headers({ 'Location': url, 'Access-Control-Allow-Origin': '*' }) });
 }
@@ -114,7 +114,7 @@ async function handleVehicleData(req: Request): Promise<Response> {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             grant_type: 'refresh_token', client_id: cid, refresh_token: rt,
-            scope: 'openid vehicle_device_data vehicle_charging_cmds vehicle_fleet_api',
+            scope: 'openid vehicle_device_data vehicle_charging_cmds vehicle_fleet_api vehicle_location',
         }),
     });
     const td = await tr.json();
