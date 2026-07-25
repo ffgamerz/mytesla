@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getLocations, saveLocation, updateLocation, deleteLocation } from '../../supabase/client';
+import MapPicker from './MapPicker';
 
 // ~100 meters in degrees (rough approximation at equator)
 const PROXIMITY_THRESHOLD = 0.001;
@@ -328,12 +329,18 @@ function LocationRate({ selectedLocation, onLocationChange }) {
                                 />
                             </div>
 
-                            {editLat && editLng && (
-                                <div className="geo-coords-info">
-                                    <span className="material-symbols-outlined">location_on</span>
-                                    {editLat.toFixed(4)}, {editLng.toFixed(4)}
-                                </div>
-                            )}
+                            {/* Map */}
+                            <div className="form-group">
+                                <label className="form-label">Pin Location on Map</label>
+                                <MapPicker
+                                    latitude={editLat}
+                                    longitude={editLng}
+                                    onLocationChange={(lat, lng) => {
+                                        setEditLat(lat);
+                                        setEditLng(lng);
+                                    }}
+                                />
+                            </div>
 
                             <button
                                 className="btn-primary-custom mt-3"

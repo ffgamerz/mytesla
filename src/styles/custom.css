@@ -889,6 +889,89 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     cursor: not-allowed;
 }
 
+/* ---------- Map Picker ---------- */
+.map-picker {
+    margin-top: 4px;
+}
+
+.map-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.map-locate-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--accent-blue);
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-blue);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+    transition: all 0.2s;
+}
+
+.map-locate-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.map-locate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.map-locate-btn span {
+    font-size: 16px;
+}
+
+.map-coords {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: monospace;
+}
+
+.map-container {
+    width: 100%;
+    height: 200px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--bg-input-border);
+    z-index: 0;
+}
+
+.map-container .leaflet-pane {
+    z-index: 1;
+}
+
+.map-container .leaflet-control-zoom a {
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-color: var(--bg-input-border);
+}
+
+.map-container .leaflet-control-zoom a:hover {
+    background: var(--bg-input);
+}
+
+.map-hint {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin: 6px 0 0;
+}
+
+.map-hint span {
+    font-size: 14px;
+}
+
 /* ---------- Animations ---------- */
 @keyframes fadeIn {
     from { opacity: 0; }
