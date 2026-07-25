@@ -152,11 +152,12 @@ function TeslaPullButton({ onDataReceived, onError, onSuccess }) {
         performPull(false);
     };
 
-    const btnClass = `tesla-pull-btn${cooldown ? ' cooldown' : ''}`;
+    // Class logic: loading → hijau + animation, otherwise → biru (default)
+    const btnClass = `tesla-pull-btn${loading ? ' loading' : ''}`;
 
     return (
         <button className={btnClass} onClick={handlePull} disabled={loading}>
-            <span className="material-symbols-outlined">{loading ? 'radar' : cooldown ? 'check_circle' : 'bolt'}</span>
+            <span className="material-symbols-outlined tesla-pull-icon">{loading ? 'radar' : cooldown ? 'check_circle' : 'bolt'}</span>
             {loading ? 'Fetching...' : cooldown ? 'Data Ready' : 'Pull from Tesla'}
         </button>
     );

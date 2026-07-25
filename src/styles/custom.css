@@ -1498,16 +1498,25 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     transform: scale(0.98);
 }
 
-.tesla-pull-btn.cooldown {
-    border-color: var(--danger);
-    background: rgba(239, 68, 68, 0.08);
-    color: var(--danger);
+.tesla-pull-btn.loading {
+    border-color: var(--accent-green);
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--accent-green);
     border-style: solid;
 }
 
-.tesla-pull-btn.cooldown:hover:not(:disabled) {
-    background: rgba(239, 68, 68, 0.16);
-    border-color: var(--danger);
+.tesla-pull-btn.loading:hover:not(:disabled) {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: var(--accent-green);
+}
+
+.tesla-pull-btn.loading .tesla-pull-icon {
+    animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .tesla-pull-btn span {
