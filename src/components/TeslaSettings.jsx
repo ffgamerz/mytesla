@@ -18,6 +18,8 @@ function TeslaSettings({ onBack, initialMessage }) {
     const [loading, setLoading] = useState(true);
     const [pullFrequency, setPullFrequency] = useState(15);
     const [defaultModelId, setDefaultModelId] = useState('model3');
+    const [showDisconnect, setShowDisconnect] = useState(false);
+    const [showSaveVin, setShowSaveVin] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -152,6 +154,18 @@ function TeslaSettings({ onBack, initialMessage }) {
                     <span className="tesla-info-label">Last Sync</span>
                     <span className="tesla-info-value">{formatDate(lastSync)}</span>
                 </div>
+                {isConnected && (
+                    <div className="hidden-btn-area" onClick={() => setShowDisconnect(!showDisconnect)}>
+                        <span className="material-symbols-outlined hidden-btn-icon">more_horiz</span>
+                        <span className="hidden-btn-label">Tap for options</span>
+                    </div>
+                )}
+                {isConnected && showDisconnect && (
+                    <button className="btn-danger mt-2" onClick={handleDisconnect}>
+                        <span className="material-symbols-outlined">link_off</span>
+                        Disconnect Tesla
+                    </button>
+                )}
             </div>
 
             <div className="card-custom">
@@ -166,12 +180,7 @@ function TeslaSettings({ onBack, initialMessage }) {
                         <span className="material-symbols-outlined">directions_car</span>
                         Connect with Tesla
                     </button>
-                ) : (
-                    <button className="btn-danger" onClick={handleDisconnect}>
-                        <span className="material-symbols-outlined">link_off</span>
-                        Disconnect Tesla
-                    </button>
-                )}
+                ) : null}
             </div>
 
             {/* VIN Input - show when connected */}
@@ -196,10 +205,16 @@ function TeslaSettings({ onBack, initialMessage }) {
                             value={vehicleName}
                             onChange={e => setVehicleName(e.target.value)} />
                     </div>
-                    <button className="btn-primary-custom" onClick={handleSaveVin} disabled={!vehicleVin.trim()}>
-                        <span className="material-symbols-outlined">save</span>
-                        Save VIN
-                    </button>
+                    <div className="hidden-btn-area" onClick={() => setShowSaveVin(!showSaveVin)}>
+                        <span className="material-symbols-outlined hidden-btn-icon">more_horiz</span>
+                        <span className="hidden-btn-label">Tap to save</span>
+                    </div>
+                    {showSaveVin && (
+                        <button className="btn-primary-custom mt-2" onClick={handleSaveVin} disabled={!vehicleVin.trim()}>
+                            <span className="material-symbols-outlined">save</span>
+                            Save VIN
+                        </button>
+                    )}
                 </div>
             )}
 

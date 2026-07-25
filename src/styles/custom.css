@@ -1999,6 +1999,38 @@ input[type="range"].form-control-custom::-moz-range-thumb {
 .text-center { text-align: center; }
 .text-muted { color: var(--text-muted); }
 
+/* ---------- Hidden Button Area (Settings) ---------- */
+.hidden-btn-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 0 4px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    opacity: 0.5;
+    user-select: none;
+}
+
+.hidden-btn-area:hover {
+    opacity: 0.8;
+}
+
+.hidden-btn-area:active {
+    opacity: 1;
+}
+
+.hidden-btn-icon {
+    font-size: 16px !important;
+    color: var(--text-dim);
+}
+
+.hidden-btn-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 400;
+}
+
 /* ---------- Location Source Badge (TeslaMap) ---------- */
 .loc-source-badge {
     display: inline-flex;
