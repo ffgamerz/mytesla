@@ -1461,6 +1461,72 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     font-size: 22px;
 }
 
+/* ---------- Vehicle Display (Read-only) ---------- */
+.vehicle-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.vehicle-display-icon {
+    width: 42px;
+    height: 42px;
+    background: rgba(59, 130, 246, 0.12);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vehicle-display-icon span {
+    font-size: 24px;
+    color: var(--accent-blue);
+}
+
+.vehicle-display-info {
+    flex: 1;
+}
+
+.vehicle-display-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.vehicle-display-specs {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.btn-vehicle-change {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.btn-vehicle-change:hover {
+    color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.btn-vehicle-change span {
+    font-size: 20px;
+}
+
+/* Range indicator in battery markers */
+.range-indicator {
+    color: var(--accent-green);
+    font-weight: 600;
+}
+
 /* ---------- Tesla Pull Button ---------- */
 .tesla-pull-wrapper {
     margin-top: 12px;

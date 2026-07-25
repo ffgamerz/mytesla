@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getTeslaSettings, updateTeslaSettings, disconnectTesla, getPullFrequency, updatePullFrequency } from '../../supabase/client';
+import { getUserSettings, updateUserSettings, getTeslaSettings, updateTeslaSettings, disconnectTesla, getPullFrequency, updatePullFrequency } from '../../supabase/client';
+import teslaModels from '../data/teslaModels';
 
 const EDGE_FUNCTION_BASE = import.meta.env.VITE_SUPABASE_URL
     ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tesla-proxy`
@@ -16,6 +17,7 @@ function TeslaSettings({ onBack, initialMessage }) {
     const [message, setMessage] = useState(initialMessage || null);
     const [loading, setLoading] = useState(true);
     const [pullFrequency, setPullFrequency] = useState(15);
+    const [defaultModelId, setDefaultModelId] = useState('model3');
 
     useEffect(() => {
         if (!user) return;
@@ -34,6 +36,11 @@ function TeslaSettings({ onBack, initialMessage }) {
             // Load pull frequency
             const freq = await getPullFrequency(user.id);
             setPullFrequency(freq);
+            // Load default model
+            const userSettings = await getUserSettings(user.id);
+            if (userSettings?.default_model_id) {
+                setDefaultModelId(userSettings.default_model_id);
+            }
         } catch (e) {
             console.error(e);
         }
@@ -69,6 +76,18 @@ function TeslaSettings({ onBack, initialMessage }) {
             setMessage({ type: 'success', text: 'VIN saved! Try Pull from Tesla.' });
         } catch (e) {
             setMessage({ type: 'error', text: 'Failed: ' + e.message });
+        }
+    };
+
+    const handleModelChange = async (e) => {
+        const val = e.target.value;
+        setDefaultModelId(val);
+        if (!user) return;
+        try {
+            await updateUserSettings(user.id, { default_model_id: val });
+            setMessage({ type: 'success', text: `Vehicle set to ${teslaModels.find(m => m.id === val)?.name || val}.` });
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Failed: ' + err.message });
         }
     };
 
@@ -183,6 +202,25 @@ function TeslaSettings({ onBack, initialMessage }) {
                     </button>
                 </div>
             )}
+
+            {/* Vehicle Model Selection */}
+            <div className="card-custom">
+                <div className="card-custom-title">
+                    <span className="material-symbols-outlined card-title-icon">directions_car</span>
+                    Vehicle Model
+                </div>
+                <p className="tesla-hint">Pilih model Tesla kau. Guna data sebenar dari Tesla untuk anggaran lebih tepat.</p>
+                <div className="form-group">
+                    <label className="form-label">Model</label>
+                    <select className="form-control-custom" value={defaultModelId} onChange={handleModelChange}>
+                        {teslaModels.map(model => (
+                            <option key={model.id} value={model.id}>
+                                {model.name} ({model.batteryCapacity} kWh · {model.range} km)
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
 
             {/* Pull Frequency Setting */}
             {isConnected && (

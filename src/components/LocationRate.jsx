@@ -43,7 +43,7 @@ async function reverseGeocode(lat, lng) {
     }
 }
 
-function LocationRate({ selectedLocation, onLocationChange }) {
+function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
     const { user } = useAuth();
     const [showModal, setShowModal] = useState(false);
     const [dbLocations, setDbLocations] = useState([]);
@@ -86,6 +86,35 @@ function LocationRate({ selectedLocation, onLocationChange }) {
             loadLocations();
         }
     }, [user]);
+
+    // Auto-detect location from Tesla coordinates
+    useEffect(() => {
+        if (!teslaCoordinate || !dbLocations.length) return;
+
+        (async () => {
+            const { lat, lng } = teslaCoordinate;
+
+            // Check if any saved location is nearby
+            let nearest = null;
+            let nearestDist = Infinity;
+            for (const loc of dbLocations) {
+                if (loc.latitude && loc.longitude) {
+                    const dist = calcDistance(lat, lng, loc.latitude, loc.longitude);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearest = loc;
+                    }
+                }
+            }
+
+            if (nearest && nearestDist < 100) {
+                // Within 100 meters - auto-select
+                if (selectedLocation?.db_id !== nearest.id) {
+                    onLocationChange(formatLoc(nearest));
+                }
+            }
+        })();
+    }, [teslaCoordinate?.lat, teslaCoordinate?.lng, dbLocations, selectedLocation?.db_id, onLocationChange]);
 
     const formatLoc = (loc) => ({
         db_id: loc.id,

@@ -4,6 +4,7 @@ import LocationRate from './LocationRate';
 import SavePlan from './SavePlan';
 import TeslaPullButton from './TeslaPullButton';
 import { useAuth } from '../context/AuthContext';
+import { getUserSettings } from '../../supabase/client';
 import {
     calcEnergyNeeded,
     calcRequiredAmps,
@@ -16,6 +17,7 @@ import {
     calcSafeAmps,
     getTodayDateStr,
     formatDateTime,
+    calcEstimatedRangeAtTarget,
 } from '../utils/calculations';
 
 const DEFAULT_MODEL = teslaModels[0]; // Model 3
@@ -27,13 +29,16 @@ const SCHEDULE_MODES = {
 
 function ChargingCalculator({ onNavigateSettings }) {
     const { user, signOut } = useAuth();
-    const [selectedModelId, setSelectedModelId] = useState(DEFAULT_MODEL.id);
+    const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
     const [currentPct, setCurrentPct] = useState(45);
     const [targetPct, setTargetPct] = useState(100);
     const [location, setLocation] = useState(null);
     const [scheduleMode, setScheduleMode] = useState(SCHEDULE_MODES.COMPLETION);
     const [hasCalculated, setHasCalculated] = useState(false);
     const [results, setResults] = useState(null);
+
+    // Tesla range from pull
+    const [teslaRange, setTeslaRange] = useState(null);
 
     // Completion time inputs
     // Default today string for completion date
@@ -50,15 +55,32 @@ function ChargingCalculator({ onNavigateSettings }) {
     const [manualAmps, setManualAmps] = useState(32);
     const [ampsMode, setAmpsMode] = useState('auto'); // 'auto' or 'manual'
     const [toastMsg, setToastMsg] = useState(null);
+    const [teslaCoordinate, setTeslaCoordinate] = useState(null);
 
-    const selectedModel = teslaModels.find(m => m.id === selectedModelId) || DEFAULT_MODEL;
+    // Load user's default model from settings
+    useEffect(() => {
+        if (!user) return;
+        (async () => {
+            try {
+                const settings = await getUserSettings(user.id);
+                if (settings?.default_model_id) {
+                    const model = teslaModels.find(m => m.id === settings.default_model_id);
+                    if (model) setSelectedModel(model);
+                }
+            } catch (e) {
+                console.warn('Failed to load user settings:', e);
+            }
+        })();
+    }, [user]);
 
     // Energy needed (live preview)
-    const energyNeeded = calcEnergyNeeded(
-        selectedModel.batteryCapacity,
+    const energyNeeded = calcEnergyNeeded({
+        batteryCapacity: selectedModel.batteryCapacity,
         currentPct,
-        targetPct
-    );
+        targetPct,
+        batteryRange: teslaRange,
+        theoreticalRange: selectedModel.range,
+    });
 
     const handleCalculate = useCallback(() => {
         if (!location) return;
@@ -151,12 +173,20 @@ function ChargingCalculator({ onNavigateSettings }) {
         if (hasCalculated && location) {
             handleCalculate();
         }
-    }, [selectedModelId, currentPct, targetPct, scheduleMode, completionDate, completionTime, startDate, startTime, manualAmps, ampsMode, location?.rate, location?.maxAmps, hasCalculated]);
+    }, [selectedModel, currentPct, targetPct, scheduleMode, completionDate, completionTime, startDate, startTime, manualAmps, ampsMode, location?.rate, location?.maxAmps, hasCalculated]);
 
     const handleTeslaDataReceived = useCallback((data) => {
         // Auto-populate battery level from Tesla data
         if (data.battery_level !== undefined) {
             setCurrentPct(data.battery_level);
+        }
+        // Store actual range from Tesla
+        if (data.battery_range !== undefined) {
+            setTeslaRange(data.battery_range);
+        }
+        // Store Tesla coordinates for location auto-detect
+        if (data.latitude && data.longitude) {
+            setTeslaCoordinate({ lat: data.latitude, lng: data.longitude });
         }
         setHasCalculated(false);
     }, []);
@@ -168,11 +198,15 @@ function ChargingCalculator({ onNavigateSettings }) {
     const handleTeslaSuccess = useCallback((data) => {
         // Show success toast
         const charging = data.is_charging ? '⚡ Charging' : '';
+        const rangeStr = data.battery_range ? ` · ${Math.round(data.battery_range)} km` : '';
         setToastMsg({
             type: 'success',
-            text: `🔋 ${data.battery_level}%${data.battery_range ? ` · ${Math.round(data.battery_range)} km` : ''}${charging ? ' · ' + charging : ''}`,
+            text: `🔋 ${data.battery_level}%${rangeStr}${charging ? ' · ' + charging : ''}`,
         });
     }, []);
+
+    // Estimated range at target
+    const rangeAtTarget = teslaRange ? calcEstimatedRangeAtTarget(teslaRange, currentPct, targetPct) : null;
 
     return (
         <div className="app-container">
@@ -201,35 +235,25 @@ function ChargingCalculator({ onNavigateSettings }) {
                 <p>Charging Calculator</p>
             </div>
 
-            {/* Vehicle Card */}
+            {/* Vehicle Card - Read only display */}
             <div className="card-custom">
                 <div className="card-custom-title">
                     <span className="material-symbols-outlined card-title-icon">directions_car</span>
                     Vehicle
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Tesla Model</label>
-                    <select
-                        className="form-control-custom"
-                        value={selectedModelId}
-                        onChange={e => setSelectedModelId(e.target.value)}
-                    >
-                        {teslaModels.map(model => (
-                            <option key={model.id} value={model.id}>
-                                {model.name} ({model.batteryCapacity} kWh)
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="spec-chips">
-                    <span className="spec-chip">
-                        <span className="material-symbols-outlined spec-icon">battery_charging_full</span>
-                        {selectedModel.batteryCapacity} kWh
-                    </span>
-                    <span className="spec-chip">
-                        <span className="material-symbols-outlined spec-icon">route</span>
-                        {selectedModel.range} km
-                    </span>
+                <div className="vehicle-display">
+                    <div className="vehicle-display-icon">
+                        <span className="material-symbols-outlined">directions_car</span>
+                    </div>
+                    <div className="vehicle-display-info">
+                        <div className="vehicle-display-name">{selectedModel.name}</div>
+                        <div className="vehicle-display-specs">
+                            {selectedModel.batteryCapacity} kWh · {selectedModel.range} km
+                        </div>
+                    </div>
+                    <button className="btn-vehicle-change" onClick={onNavigateSettings} title="Change vehicle in Settings">
+                        <span className="material-symbols-outlined">settings</span>
+                    </button>
                 </div>
             </div>
 
@@ -255,8 +279,14 @@ function ChargingCalculator({ onNavigateSettings }) {
                             ></div>
                         </div>
                         <div className="battery-markers">
-                            <span>{currentPct}% now</span>
-                            <span>{Math.round(energyNeeded)} kWh needed</span>
+                            <span>
+                                {currentPct}% now
+                                {teslaRange !== null && <span className="range-indicator"> · {Math.round(teslaRange)} km</span>}
+                            </span>
+                            <span>
+                                {Math.round(energyNeeded)} kWh needed
+                                {rangeAtTarget !== null && <span className="range-indicator"> · {rangeAtTarget} km</span>}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -370,7 +400,7 @@ function ChargingCalculator({ onNavigateSettings }) {
                         <div className="form-group">
                             <label className="form-label">
                                 Amperage Setting
-                                <span className="form-label-hint"> (Max safe: {calcSafeAmps(location.maxAmps)}A)</span>
+                                <span className="form-label-hint"> (Max safe: {location ? calcSafeAmps(location.maxAmps) : '?'}A)</span>
                             </label>
                             <div className="amps-mode-toggle">
                                 <button
@@ -394,7 +424,7 @@ function ChargingCalculator({ onNavigateSettings }) {
                                         type="range"
                                         className="form-control-custom"
                                         min="5"
-                                        max={location.maxAmps}
+                                        max={location ? location.maxAmps : 32}
                                         value={manualAmps}
                                         onChange={e => setManualAmps(Number(e.target.value))}
                                     />
@@ -404,7 +434,7 @@ function ChargingCalculator({ onNavigateSettings }) {
                             {ampsMode === 'auto' && (
                                 <div className="auto-amps-info">
                                     <span className="material-symbols-outlined auto-amps-icon">bolt</span>
-                                    Using max safe amperage: <strong>{calcSafeAmps(location.maxAmps)}A</strong> ({location.voltage}V)
+                                    Using max safe amperage: <strong>{location ? calcSafeAmps(location.maxAmps) : '?'}A</strong> ({location?.voltage || 240}V)
                                 </div>
                             )}
                         </div>
@@ -416,6 +446,7 @@ function ChargingCalculator({ onNavigateSettings }) {
                     <LocationRate
                         selectedLocation={location}
                         onLocationChange={setLocation}
+                        teslaCoordinate={teslaCoordinate}
                     />
                 </div>
             </div>
@@ -537,7 +568,7 @@ function ChargingCalculator({ onNavigateSettings }) {
             {/* Save Plan */}
             <SavePlan
                 currentState={{
-                    selectedModelId,
+                    selectedModelId: selectedModel.id,
                     currentPct,
                     targetPct,
                     scheduleMode,

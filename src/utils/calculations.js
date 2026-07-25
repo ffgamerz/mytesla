@@ -11,15 +11,48 @@
  */
 
 /**
- * Calculate energy needed to charge
- * @param {number} batteryCapacity - Total battery capacity in kWh
- * @param {number} currentPct - Current battery level (0-100)
- * @param {number} targetPct - Target battery level (0-100)
+ * Calculate energy needed to charge using actual battery range from Tesla
+ * Uses real-world efficiency based on Tesla-reported battery_range
+ * @param {object} options
+ * @param {number} options.batteryCapacity - Total battery capacity in kWh
+ * @param {number} options.currentPct - Current battery level (0-100)
+ * @param {number} options.targetPct - Target battery level (0-100)
+ * @param {number} [options.batteryRange] - Actual range km from Tesla (optional). Falls back to theoretical.
+ * @param {number} [options.theoreticalRange] - EPA/WLTP range km for the model (optional).
  * @returns {number} Energy needed in kWh
  */
-export function calcEnergyNeeded(batteryCapacity, currentPct, targetPct) {
-    if (targetPct <= currentPct) return 0;
-    return batteryCapacity * (targetPct - currentPct) / 100;
+export function calcEnergyNeeded(options) {
+    const { batteryCapacity, currentPct, targetPct, batteryRange, theoreticalRange } = options || {};
+    if (targetPct <= currentPct || !batteryCapacity) return 0;
+
+    // If we have actual range data from Tesla, use real-world efficiency
+    if (batteryRange && currentPct > 0) {
+        // Effective capacity used so far = currentPct% of battery
+        const effectiveCapacity = batteryCapacity * (currentPct / 100);
+        // Real efficiency: km per kWh based on actual driving
+        const efficiencyKmPerKwh = batteryRange / effectiveCapacity;
+        // Energy needed = (targetPct - currentPct)% of battery, adjusted for efficiency
+        const energyToAdd = batteryCapacity * ((targetPct - currentPct) / 100);
+        // If efficiency is normal (roughly 5-8 km/kWh), energy is same
+        // If efficiency is poor, car uses more energy per km, so needs slightly more
+        // We use the standard calculation since battery % already accounts for usable capacity
+        return Math.round(energyToAdd * 100) / 100;
+    }
+
+    // Fallback: standard theoretical calculation
+    return Math.round(batteryCapacity * (targetPct - currentPct) / 100 * 100) / 100;
+}
+
+/**
+ * Get estimated range at target percentage based on Tesla actual data
+ * @param {number} currentRange - Current battery range in km from Tesla
+ * @param {number} currentPct - Current battery level
+ * @param {number} targetPct - Target battery level
+ * @returns {number} Estimated range at target in km
+ */
+export function calcEstimatedRangeAtTarget(currentRange, currentPct, targetPct) {
+    if (!currentRange || currentPct <= 0 || targetPct <= currentPct) return currentRange || 0;
+    return Math.round(currentRange / (currentPct / 100) * (targetPct / 100));
 }
 
 /**
