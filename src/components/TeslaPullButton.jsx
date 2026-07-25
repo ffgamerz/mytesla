@@ -46,12 +46,17 @@ function TeslaPullButton({ onDataReceived, onError, onSuccess }) {
 
             const data = await response.json();
 
+            // Debug: log what Fleet API actually returned for location
+            console.log('[TeslaPull] Fleet API response lat/lng:', data.latitude, data.longitude);
+
             // Save to database - get the inserted row with ID back
             const insertedRow = await saveTeslaVehicleData(user.id, data);
             const dataId = insertedRow?.id;
 
-            // If Fleet API returned null for location, use phone GPS as fallback
-            if (dataId && (data.latitude === null || data.longitude === null)) {
+            // If Fleet API returned null/undefined for location, use phone GPS as fallback
+            // Use == null to catch both null and undefined
+            if (dataId && (data.latitude == null || data.longitude == null)) {
+                console.log('[TeslaPull] Fleet API location null/undefined, trying phone GPS...');
                 try {
                     const phonePos = await new Promise((resolve, reject) => {
                         if (!navigator.geolocation) {
@@ -64,9 +69,11 @@ function TeslaPullButton({ onDataReceived, onError, onSuccess }) {
                                 longitude: position.coords.longitude,
                             }),
                             (err) => reject(err),
-                            { enableHighAccuracy: true, timeout: 10000 }
+                            { enableHighAccuracy: true, timeout: 15000 }
                         );
                     });
+
+                    console.log('[TeslaPull] Phone GPS got:', phonePos.latitude, phonePos.longitude);
 
                     // Update the same row with phone GPS coordinates
                     await updateTeslaDataLocation(dataId, phonePos.latitude, phonePos.longitude);
@@ -74,10 +81,14 @@ function TeslaPullButton({ onDataReceived, onError, onSuccess }) {
                     // Merge phone GPS into data for the callback
                     data.latitude = phonePos.latitude;
                     data.longitude = phonePos.longitude;
+
+                    console.log('[TeslaPull] Location updated in DB successfully');
                 } catch (geoErr) {
-                    console.warn('Phone GPS fallback failed:', geoErr?.message || geoErr);
+                    console.warn('[TeslaPull] Phone GPS fallback failed:', geoErr?.message || geoErr);
                     // Non-critical — proceed with null location
                 }
+            } else if (dataId) {
+                console.log('[TeslaPull] Fleet API location OK, saved to DB:', data.latitude, data.longitude);
             }
 
             // Show success toast (unless silent auto-pull)
