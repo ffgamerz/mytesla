@@ -12,7 +12,7 @@ L.Icon.Default.mergeOptions({
 const DARK_TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 const DARK_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
-function TeslaMap({ latitude, longitude }) {
+function TeslaMap({ latitude, longitude, locationSource }) {
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
     const markerRef = useRef(null);
@@ -87,11 +87,19 @@ function TeslaMap({ latitude, longitude }) {
         );
     }
 
+    const sourceLabel = locationSource === 'tesla' ? 'From Tesla Fleet API' : 'From Device GPS';
+
     return (
         <div className="card-custom">
             <div className="card-custom-title">
                 <span className="material-symbols-outlined card-title-icon">map</span>
                 Tesla Location
+                <span className={`loc-source-badge ${locationSource === 'tesla' ? 'source-tesla' : 'source-device'}`}>
+                    <span className="material-symbols-outlined loc-source-icon">
+                        {locationSource === 'tesla' ? 'directions_car' : 'smartphone'}
+                    </span>
+                    {sourceLabel}
+                </span>
             </div>
             <div className="tesla-map-coords">
                 <span className="material-symbols-outlined tesla-map-pin">location_on</span>

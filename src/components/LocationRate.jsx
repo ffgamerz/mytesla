@@ -63,6 +63,7 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
     const [geoLng, setGeoLng] = useState(null);
     const [geoAddress, setGeoAddress] = useState('');
     const [foundNearby, setFoundNearby] = useState(null);
+    const [savePrompt, setSavePrompt] = useState(null); // { lat, lng } when new location not saved
 
     // Load all locations from database
     const loadLocations = async () => {
@@ -145,6 +146,10 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
                 if (selectedLocation?.db_id !== nearest.id) {
                     onLocationChange(formatLoc(nearest));
                 }
+                setSavePrompt(null); // clear prompt since we have a saved location nearby
+            } else {
+                // No saved location nearby - show save prompt with the Tesla coordinates
+                setSavePrompt({ lat, lng });
             }
         })();
     }, [teslaCoordinate?.lat, teslaCoordinate?.lng, dbLocations, selectedLocation?.db_id, onLocationChange]);
@@ -324,6 +329,31 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
         setGeoStatus('');
         setFoundNearby(null);
         setShowModal(true);
+    };
+
+    const handleSavePromptLocation = async () => {
+        if (!user || !savePrompt) return;
+        setLoading(true);
+        try {
+            const address = await reverseGeocode(savePrompt.lat, savePrompt.lng);
+            const name = address || `Location (${savePrompt.lat.toFixed(4)}, ${savePrompt.lng.toFixed(4)})`;
+            const newLoc = await saveLocation(user.id, {
+                name,
+                rate: 0.38,
+                voltage: 240,
+                max_amps: 32,
+                icon: 'location_on',
+                latitude: savePrompt.lat,
+                longitude: savePrompt.lng,
+            });
+
+            await loadLocations();
+            onLocationChange(formatLoc(newLoc));
+            setSavePrompt(null);
+        } catch (e) {
+            console.error('Failed to save prompt location:', e);
+        }
+        setLoading(false);
     };
 
     const currentLocation = selectedLocation || { name: 'Select Location', rate: 0, voltage: 240, icon: 'home' };
@@ -557,23 +587,44 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
     }
 
     return (
-        <div className="location-display" onClick={handleOpen}>
-            <div className="location-icon-box">
-                <span className="material-symbols-outlined loc-icon-symbol">
-                    {currentLocation.icon || 'home'}
-                </span>
-            </div>
-            <div className="location-info">
-                <div className="location-name">{currentLocation.name}</div>
-                <div className="location-rate">
-                    RM {currentLocation.rate.toFixed(2)} / kWh &middot;{' '}
-                    {currentLocation.voltage}V
+        <>
+            <div className="location-display" onClick={handleOpen}>
+                <div className="location-icon-box">
+                    <span className="material-symbols-outlined loc-icon-symbol">
+                        {currentLocation.icon || 'home'}
+                    </span>
                 </div>
+                <div className="location-info">
+                    <div className="location-name">{currentLocation.name}</div>
+                    <div className="location-rate">
+                        RM {currentLocation.rate.toFixed(2)} / kWh &middot;{' '}
+                        {currentLocation.voltage}V
+                    </div>
+                </div>
+                <button className="location-change-btn" onClick={handleOpen}>
+                    Change <span className="material-symbols-outlined expand-icon">expand_more</span>
+                </button>
             </div>
-            <button className="location-change-btn" onClick={handleOpen}>
-                Change <span className="material-symbols-outlined expand-icon">expand_more</span>
-            </button>
-        </div>
+
+            {/* Save Prompt: shown when Tesla location is not saved as a location */}
+            {savePrompt && (
+                <div className="location-save-prompt">
+                    <span className="material-symbols-outlined location-save-prompt-icon">add_location</span>
+                    <div className="location-save-prompt-info">
+                        <strong>New location detected</strong><br />
+                        {savePrompt.lat.toFixed(4)}, {savePrompt.lng.toFixed(4)} — not saved yet.
+                    </div>
+                    <button
+                        className="location-save-prompt-btn"
+                        onClick={handleSavePromptLocation}
+                        disabled={loading}
+                    >
+                        <span className="material-symbols-outlined" style={{fontSize: 16}}>save</span>
+                        Save
+                    </button>
+                </div>
+            )}
+        </>
     );
 }
 

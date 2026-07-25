@@ -59,6 +59,7 @@ function ChargingCalculator({ onNavigateSettings }) {
     const [ampsMode, setAmpsMode] = useState('auto'); // 'auto' or 'manual'
     const [toastMsg, setToastMsg] = useState(null);
     const [teslaCoordinate, setTeslaCoordinate] = useState(null);
+    const [locationSource, setLocationSource] = useState(null);
 
     // Load user's default model from settings
     useEffect(() => {
@@ -193,6 +194,11 @@ function ChargingCalculator({ onNavigateSettings }) {
         // Location comes from DB (Tesla Fleet API or phone GPS fallback, handled in TeslaPullButton)
         if (data.latitude !== undefined && data.longitude !== undefined && data.latitude !== null && data.longitude !== null) {
             setTeslaCoordinate({ lat: data.latitude, lng: data.longitude });
+        }
+
+        // Track where location came from (tesla vs device)
+        if (data.locationSource) {
+            setLocationSource(data.locationSource);
         }
 
         setHasCalculated(false);
@@ -356,6 +362,7 @@ function ChargingCalculator({ onNavigateSettings }) {
             <TeslaMap
                 latitude={teslaCoordinate?.lat}
                 longitude={teslaCoordinate?.lng}
+                locationSource={locationSource}
             />
 
             {/* Schedule Card */}

@@ -53,6 +53,12 @@ function TeslaPullButton({ onDataReceived, onError, onSuccess }) {
             const insertedRow = await saveTeslaVehicleData(user.id, data);
             const dataId = insertedRow?.id;
 
+            // Determine location source: 'tesla' if Fleet API gave us coords, 'device' if we used phone GPS
+            let locationSource = 'unknown';
+            if (data.latitude != null && data.longitude != null) {
+                locationSource = 'tesla';
+            }
+
             // If Fleet API returned null/undefined for location, use phone GPS as fallback
             // Use == null to catch both null and undefined
             if (dataId && (data.latitude == null || data.longitude == null)) {
@@ -81,8 +87,9 @@ function TeslaPullButton({ onDataReceived, onError, onSuccess }) {
                     // Merge phone GPS into data for the callback
                     data.latitude = phonePos.latitude;
                     data.longitude = phonePos.longitude;
+                    locationSource = 'device';
 
-                    console.log('[TeslaPull] Location updated in DB successfully');
+                    console.log('[TeslaPull] Location updated in DB successfully (source: device)');
                 } catch (geoErr) {
                     console.warn('[TeslaPull] Phone GPS fallback failed:', geoErr?.message || geoErr);
                     // Non-critical — proceed with null location
@@ -118,6 +125,7 @@ function TeslaPullButton({ onDataReceived, onError, onSuccess }) {
                     outside_temp: data.outside_temp,
                     latitude: data.latitude,
                     longitude: data.longitude,
+                    locationSource: locationSource,
                     model: data.model,
                     trim: data.trim,
                     timestamp: new Date().toISOString(),
