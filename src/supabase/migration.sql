@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS tesla_user_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 2. Locations (saved by user, including defaults)
+-- 2. Locations (saved by user)
 CREATE TABLE IF NOT EXISTS tesla_locations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -52,34 +52,13 @@ CREATE INDEX IF NOT EXISTS idx_tesla_charging_history_user ON tesla_charging_his
 CREATE INDEX IF NOT EXISTS idx_tesla_charging_history_created ON tesla_charging_history(user_id, created_at DESC);
 
 -- ==========================================
--- AUTO-INSERT DEFAULT LOCATIONS ON SIGNUP
--- ==========================================
-CREATE OR REPLACE FUNCTION insert_default_locations()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO tesla_locations (user_id, name, rate, voltage, max_amps, icon) VALUES
-        (NEW.id, 'Home', 0.38, 240, 32, 'home'),
-        (NEW.id, 'Office', 0.45, 240, 32, 'business'),
-        (NEW.id, 'Supercharger', 1.20, 480, 500, 'bolt'),
-        (NEW.id, 'Public AC', 0.60, 240, 32, 'location_on');
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_user_created_insert_default_locations ON auth.users;
-CREATE TRIGGER on_user_created_insert_default_locations
-    AFTER INSERT ON auth.users
-    FOR EACH ROW
-    EXECUTE FUNCTION insert_default_locations();
-
--- ==========================================
 -- ROW LEVEL SECURITY
 -- ==========================================
 ALTER TABLE tesla_user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tesla_locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tesla_charging_history ENABLE ROW LEVEL SECURITY;
 
--- User settings: user can only see/update their own
+-- User settings
 CREATE POLICY "Users can view own settings"
     ON tesla_user_settings FOR SELECT
     USING (auth.uid() = id);
@@ -92,7 +71,7 @@ CREATE POLICY "Users can update own settings"
     ON tesla_user_settings FOR UPDATE
     USING (auth.uid() = id);
 
--- Locations: user can only see/update their own
+-- Locations
 CREATE POLICY "Users can view own locations"
     ON tesla_locations FOR SELECT
     USING (auth.uid() = user_id);
@@ -109,7 +88,7 @@ CREATE POLICY "Users can delete own locations"
     ON tesla_locations FOR DELETE
     USING (auth.uid() = user_id);
 
--- Charging history: user can only see/update their own
+-- Charging history
 CREATE POLICY "Users can view own history"
     ON tesla_charging_history FOR SELECT
     USING (auth.uid() = user_id);
