@@ -163,11 +163,6 @@ async function handleVehicleData(req: Request): Promise<Response> {
     const cs = r.charge_state || {}, ds = r.drive_state || {}, vc = r.vehicle_config || {}, cl = r.climate_state || {}, vs = r.vehicle_state || {};
     await d.from('tesla_user_settings').update({ tesla_last_sync: new Date().toISOString() }).eq('id', user_id);
 
-    // Debug: log raw drive_state to console
-    console.log('RAW_DRIVE_STATE:', JSON.stringify(r.drive_state));
-    console.log('RAW_CHARGE_STATE:', JSON.stringify(r.charge_state));
-    console.log('RESPONSE_KEYS:', Object.keys(r).join(','));
-
     return new Response(JSON.stringify({
         battery_level: cs.battery_level ?? null, battery_range: cs.battery_range ?? null,
         estimated_range: cs.est_battery_range ?? null, charge_state: cs.charging_state ?? null,
@@ -179,8 +174,5 @@ async function handleVehicleData(req: Request): Promise<Response> {
         model: vc.model ?? null, trim: vc.trim_badging ?? null,
         vin: r.vin ?? null, display_name: r.display_name ?? null,
         timestamp: new Date().toISOString(),
-        // Debug fields
-        debug_drive_state_keys: r.drive_state ? Object.keys(r.drive_state).join(',') : 'null',
-        debug_drive_state: r.drive_state,
     }), { status: 200, headers: cors() });
 }
