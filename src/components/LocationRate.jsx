@@ -129,7 +129,7 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
     // Auto-detect location from Tesla coordinates (only when pulled)
     // Shows a prompt to save new location if none nearby
     useEffect(() => {
-        if (!teslaCoordinate || !dbLocations.length) return;
+        if (!teslaCoordinate) return;
 
         const { lat, lng } = teslaCoordinate;
 
