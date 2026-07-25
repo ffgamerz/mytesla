@@ -127,9 +127,34 @@ async function handleVehicleData(req: Request): Promise<Response> {
         tesla_token_expiry: new Date(Date.now() + (td.expires_in * 1000)).toISOString(),
     }).eq('id', user_id);
 
-    // Fleet API - partner already registered
-    const vr = await fetch(`${API}/api/1/vehicles/${vin}/vehicle_data`, { headers: { 'Authorization': `Bearer ${at}` } });
-    const vd = await vr.json();
+    // Helper: small delay
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+    // Helper: fetch vehicle data
+    async function fetchVehicleData(token: string) {
+        return await fetch(`${API}/api/1/vehicles/${vin}/vehicle_data`, { headers: { 'Authorization': `Bearer ${token}` } });
+    }
+
+    // Try to get vehicle data (vehicle might be asleep = 408)
+    let vr = await fetchVehicleData(at);
+    let vd = await vr.json();
+
+    // If vehicle is asleep (408), send wake-up command and retry
+    if (vr.status === 408 || vd?.error === 'vehicle unavailable: vehicle is offline or asleep') {
+        // Send wake-up command
+        await fetch(`${API}/api/1/vehicles/${vin}/wake_up`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${at}` },
+        });
+
+        // Wait for vehicle to wake up (Tesla recommends 30s, but 10s often enough)
+        await sleep(10000);
+
+        // Retry vehicle data
+        vr = await fetchVehicleData(at);
+        vd = await vr.json();
+    }
+
     if (!vr.ok || !vd.response) {
         return new Response(JSON.stringify({ error: `Vehicle data error (${vr.status})`, details: vd }), { status: 200, headers: cors() });
     }
