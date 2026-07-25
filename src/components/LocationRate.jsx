@@ -64,6 +64,11 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
     const [geoAddress, setGeoAddress] = useState('');
     const [foundNearby, setFoundNearby] = useState(null);
     const [teslaLocPrompt, setTeslaLocPrompt] = useState(null); // { lat, lng } when unsaved Tesla location
+    const [inlineAddMode, setInlineAddMode] = useState(false);
+    const [inlineAddName, setInlineAddName] = useState('');
+    const [inlineAddRate, setInlineAddRate] = useState('0.38');
+    const [inlineAddVoltage, setInlineAddVoltage] = useState('240');
+    const [inlineAddAmps, setInlineAddAmps] = useState('32');
 
     // Load all locations from database
     const loadLocations = async () => {
@@ -330,14 +335,35 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
         setShowModal(true);
     };
 
+    const handleInlineAdd = async () => {
+        if (!user || !teslaLocPrompt || !inlineAddName.trim()) return;
+        setLoading(true);
+        try {
+            const newLoc = await saveLocation(user.id, {
+                name: inlineAddName.trim(),
+                rate: parseFloat(inlineAddRate) || 0.38,
+                voltage: parseInt(inlineAddVoltage) || 240,
+                max_amps: parseInt(inlineAddAmps) || 32,
+                icon: 'location_on',
+                latitude: teslaLocPrompt.lat,
+                longitude: teslaLocPrompt.lng,
+            });
+            await loadLocations();
+            onLocationChange(formatLoc(newLoc));
+            setTeslaLocPrompt(null);
+            setInlineAddMode(false);
+        } catch (e) {
+            console.error('Failed to save:', e);
+        }
+        setLoading(false);
+    };
+
     const handleAddTeslaLocation = async () => {
         if (!user || !teslaLocPrompt) return;
-        // Reverse geocode to get address, then open the add form pre-filled
+        // Reverse geocode to get name suggestion
         const address = await reverseGeocode(teslaLocPrompt.lat, teslaLocPrompt.lng);
-        setTeslaLocPrompt(null);
-        // Open modal in edit mode with pre-filled data
-        startNew(address || `Location (${teslaLocPrompt.lat.toFixed(4)}, ${teslaLocPrompt.lng.toFixed(4)})`, teslaLocPrompt.lat, teslaLocPrompt.lng);
-        setShowModal(true);
+        setInlineAddName(address || `Location (${teslaLocPrompt.lat.toFixed(4)}, ${teslaLocPrompt.lng.toFixed(4)})`);
+        setInlineAddMode(true);
     };
 
     const currentLocation = selectedLocation || { name: 'Select Location', rate: 0, voltage: 240, icon: 'home' };
@@ -591,7 +617,7 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
             </div>
 
             {/* Prompt to save new Tesla location */}
-            {teslaLocPrompt && (
+            {teslaLocPrompt && !inlineAddMode && (
                 <div className="location-save-prompt">
                     <span className="material-symbols-outlined location-save-prompt-icon">add_location</span>
                     <div className="location-save-prompt-info">
@@ -602,6 +628,54 @@ function LocationRate({ selectedLocation, onLocationChange, teslaCoordinate }) {
                         <span className="material-symbols-outlined" style={{fontSize: 16}}>add</span>
                         Add
                     </button>
+                </div>
+            )}
+            {teslaLocPrompt && inlineAddMode && (
+                <div className="card-custom" style={{marginTop: 8, padding: 16}}>
+                    <div className="card-custom-title" style={{marginBottom: 10}}>
+                        <span className="material-symbols-outlined card-title-icon">add_location</span>
+                        Add This Location
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Name</label>
+                        <input type="text" className="form-control-custom"
+                            placeholder="e.g. My Home"
+                            value={inlineAddName}
+                            onChange={e => setInlineAddName(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Rate (RM/kWh)</label>
+                        <input type="number" step="0.01" min="0" max="5"
+                            className="form-control-custom"
+                            value={inlineAddRate}
+                            onChange={e => setInlineAddRate(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Voltage (V)</label>
+                        <input type="number" step="10" min="100" max="1000"
+                            className="form-control-custom"
+                            value={inlineAddVoltage}
+                            onChange={e => setInlineAddVoltage(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Max Amps (A)</label>
+                        <input type="number" step="1" min="5" max="500"
+                            className="form-control-custom"
+                            value={inlineAddAmps}
+                            onChange={e => setInlineAddAmps(e.target.value)} />
+                    </div>
+                    <div style={{display: 'flex', gap: 8}}>
+                        <button className="btn-primary-custom" onClick={handleInlineAdd}
+                            disabled={loading || !inlineAddName.trim()}
+                            style={{flex: 1}}>
+                            <span className="material-symbols-outlined">save</span>
+                            {loading ? 'Saving...' : 'Save Location'}
+                        </button>
+                        <button className="btn-save" onClick={() => {setInlineAddMode(false); setTeslaLocPrompt(null);}}
+                            style={{flex: '0 0 auto', padding: '14px 16px', width: 'auto'}}>
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
                 </div>
             )}
         </>
