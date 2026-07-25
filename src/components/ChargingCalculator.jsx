@@ -39,6 +39,7 @@ function ChargingCalculator({ onNavigateSettings }) {
 
     // Tesla range from pull
     const [teslaRange, setTeslaRange] = useState(null);
+    const [teslaTimestamp, setTeslaTimestamp] = useState(null);
 
     // Completion time inputs
     // Default today string for completion date
@@ -184,6 +185,8 @@ function ChargingCalculator({ onNavigateSettings }) {
         if (data.battery_range !== undefined) {
             setTeslaRange(data.battery_range);
         }
+        // Store timestamp from data or now
+        setTeslaTimestamp(data.timestamp || new Date().toISOString());
         // Store Tesla coordinates for location auto-detect
         if (data.latitude && data.longitude) {
             setTeslaCoordinate({ lat: data.latitude, lng: data.longitude });
@@ -297,6 +300,11 @@ function ChargingCalculator({ onNavigateSettings }) {
                         onError={handleTeslaError}
                         onSuccess={handleTeslaSuccess}
                     />
+                    {teslaTimestamp && (
+                        <div className="tesla-timestamp">
+                            Last updated: {new Date(teslaTimestamp).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                        </div>
+                    )}
                 </div>
 
                 <div className="form-group mt-4">

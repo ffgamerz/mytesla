@@ -1527,6 +1527,14 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     font-weight: 600;
 }
 
+/* ---------- Timestamp under pull button ---------- */
+.tesla-timestamp {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: center;
+    margin-top: 6px;
+}
+
 /* ---------- Tesla Pull Button ---------- */
 .tesla-pull-wrapper {
     margin-top: 12px;
