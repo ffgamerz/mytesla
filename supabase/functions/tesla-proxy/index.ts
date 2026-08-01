@@ -17,13 +17,13 @@ const CSEC = Deno.env.get('TESLA_CLIENT_SECRET') || '';
 const APP = Deno.env.get('APP_URL') || 'http://localhost:5173';
 
 function cors() {
-    return new Headers({'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'});
+    return new Headers({ 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' });
 }
 function db() {
     return createClient(SU, SK, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 function b64url(b: Uint8Array): string {
-    return btoa(String.fromCharCode(...new Uint8Array(b))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    return btoa(String.fromCharCode(...new Uint8Array(b))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 serve(async (req) => {
@@ -86,7 +86,7 @@ async function handleCallback(req: Request): Promise<Response> {
             vin = vd.response[0].vin;
             name = vd.response[0].display_name || `Tesla ${vd.response[0].vehicle_config?.model || ''}`;
         }
-    } catch (_) {}
+    } catch (_) { }
 
     await d.from('tesla_user_settings').upsert({
         id: user_id, tesla_client_id: CID, tesla_refresh_token: rt, tesla_access_token: at,
@@ -160,7 +160,34 @@ async function handleVehicleData(req: Request): Promise<Response> {
     }
 
     const r = vd.response;
-    const cs = r.charge_state || {}, ds = r.drive_state || {}, vc = r.vehicle_config || {}, cl = r.climate_state || {}, vs = r.vehicle_state || {};
+    const cs = r.charge_state || {}, vc = r.vehicle_config || {}, cl = r.climate_state || {}, vs = r.vehicle_state || {};
+
+    // --- DRIVE STATE (Location) Debug ---
+    // Tesla Fleet API sometimes returns null for drive_state.latitude/longitude.
+    // Log the raw drive_state to help diagnose.
+    const ds = r.drive_state || {};
+    console.log('[tesla-proxy] drive_state keys:', Object.keys(ds));
+    console.log('[tesla-proxy] drive_state.latitude:', ds.latitude, 'longitude:', ds.longitude);
+    console.log('[tesla-proxy] drive_state exists in response:', 'drive_state' in r);
+
+    // If drive_state is empty but vehicle_state has odometer, maybe vehicle is offline
+    if (Object.keys(ds).length === 0) {
+        console.log('[tesla-proxy] WARNING: drive_state is EMPTY object - vehicle may be offline');
+    }
+
+    // Try alternate location source: some Tesla APIs return location under vehicle_state
+    const altLat = vs?.latitude ?? null;
+    const altLng = vs?.longitude ?? null;
+    if (altLat !== null && altLng !== null) {
+        console.log('[tesla-proxy] Found location in vehicle_state instead:', altLat, altLng);
+    }
+
+    // Use best available location: prefer drive_state, fallback to vehicle_state
+    const finalLat = ds.latitude ?? altLat ?? null;
+    const finalLng = ds.longitude ?? altLng ?? null;
+    console.log('[tesla-proxy] final lat/lng:', finalLat, finalLng);
+    // --- END DRIVE STATE DEBUG ---
+
     await d.from('tesla_user_settings').update({ tesla_last_sync: new Date().toISOString() }).eq('id', user_id);
 
     // Tesla Fleet API returns battery_range in miles regardless of user setting.
@@ -178,7 +205,7 @@ async function handleVehicleData(req: Request): Promise<Response> {
         charge_voltage: cs.charge_actual_voltage ?? null, charge_amps: cs.charge_actual_amps ?? null,
         odometer: r.odometer ?? null, locked: vs.locked ?? null, sentry_mode: vs.sentry_mode ?? null,
         inside_temp: cl.inside_temp ?? null, outside_temp: cl.outside_temp ?? null,
-        latitude: ds.latitude ?? null, longitude: ds.longitude ?? null,
+        latitude: finalLat, longitude: finalLng,
         model: vc.model ?? null, trim: vc.trim_badging ?? null,
         vin: r.vin ?? null, display_name: r.display_name ?? null,
         timestamp: new Date().toISOString(),

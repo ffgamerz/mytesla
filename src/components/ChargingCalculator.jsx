@@ -29,6 +29,22 @@ const SCHEDULE_MODES = {
     START: 'start',
 };
 
+/**
+ * Get current local date + time for "By Start Time" scheduling.
+ * Time is rounded up to the next minute so the value is never in the past
+ * (avoids the jump-to-tomorrow edge case). Handles midnight rollover correctly.
+ * @returns {{ dateStr: string, timeStr: string }}
+ */
+function getCurrentStartDateTime() {
+    const d = new Date();
+    // Round up to the next minute so the start time is always in the future
+    d.setSeconds(0, 0);
+    d.setMinutes(d.getMinutes() + 1);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return { dateStr, timeStr };
+}
+
 function ChargingCalculator({ onNavigateSettings }) {
     const { user, signOut } = useAuth();
     const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
@@ -44,9 +60,9 @@ function ChargingCalculator({ onNavigateSettings }) {
     const [teslaTimestamp, setTeslaTimestamp] = useState(null);
 
     // Completion time inputs
-    // Default today string for completion date
-    const todayStr = new Date().toISOString().split('T')[0];
-    
+    // Default today string for completion date (local time, not UTC)
+    const todayStr = getTodayDateStr();
+
     const [completionDate, setCompletionDate] = useState(todayStr);
     const [completionTime, setCompletionTime] = useState('08:00');
 
@@ -220,7 +236,7 @@ function ChargingCalculator({ onNavigateSettings }) {
 
     // State to force re-render for timeAgo updates
     const [, setTick] = useState(0);
-    
+
     // Update timeAgo every 30 seconds
     useEffect(() => {
         if (!teslaTimestamp) return;
@@ -383,7 +399,13 @@ function ChargingCalculator({ onNavigateSettings }) {
                     </button>
                     <button
                         className={`toggle-btn ${scheduleMode === SCHEDULE_MODES.START ? 'active' : ''}`}
-                        onClick={() => setScheduleMode(SCHEDULE_MODES.START)}
+                        onClick={() => {
+                            // When scheduling by start time, default date & time to current
+                            const { dateStr, timeStr } = getCurrentStartDateTime();
+                            setStartDate(dateStr);
+                            setStartTime(timeStr);
+                            setScheduleMode(SCHEDULE_MODES.START);
+                        }}
                     >
                         <span className="material-symbols-outlined toggle-icon">wb_twilight</span>
                         By Start Time
@@ -421,6 +443,7 @@ function ChargingCalculator({ onNavigateSettings }) {
                                 className="form-control-custom"
                                 value={startDate}
                                 onChange={e => setStartDate(e.target.value)}
+                                min={getTodayDateStr()}
                             />
                         </div>
                         <div className="form-group">
