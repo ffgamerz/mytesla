@@ -300,7 +300,7 @@ function SavePlan({ currentState, results }) {
                                                 <div className="result-item">
                                                     <span className="result-label">
                                                         <span className="material-symbols-outlined result-icon">check_circle</span>
-                                                        {record.schedule_mode === 'completion' ? 'Will Complete' : 'Ready By'}
+                                                        Will Complete
                                                     </span>
                                                     <span className="result-value green">{getReadyByFormatted(record)}</span>
                                                 </div>
