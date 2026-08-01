@@ -1379,6 +1379,71 @@ input[type="range"].form-control-custom::-moz-range-thumb {
     margin-top: 4px;
 }
 
+/* Expanded history item (clickable row) */
+.history-item-main {
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s;
+}
+
+.history-item-main:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.history-expand-icon {
+    display: flex;
+    align-items: center;
+    color: var(--text-dim);
+    transition: transform 0.2s;
+}
+
+.history-expand-icon span {
+    font-size: 18px;
+}
+
+.history-expand-icon.open {
+    transform: rotate(180deg);
+    color: var(--accent-blue);
+}
+
+/* Expanded detail panel (mirrors Charging Summary) */
+.history-detail {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--bg-card-border);
+}
+
+.history-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.history-detail-icon {
+    font-size: 16px;
+    color: var(--accent-blue);
+}
+
+.history-detail .results-section {
+    margin-top: 0;
+}
+
+.history-detail .result-item {
+    padding: 8px 0;
+}
+
+.history-detail .result-label {
+    font-size: 12px;
+}
+
+.history-detail .result-value {
+    font-size: 14px;
+}
+
 /* ---------- User Footer ---------- */
 .user-footer {
     display: flex;

@@ -14,6 +14,7 @@ function SavePlan({ currentState, results }) {
     const [showMenu, setShowMenu] = useState(false);
     const [history, setHistory] = useState([]);
     const [showHistory, setShowHistory] = useState(false);
+    const [expandedId, setExpandedId] = useState(null);
     const [loading, setLoading] = useState(false);
     const [saved, setSaved] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -107,6 +108,33 @@ function SavePlan({ currentState, results }) {
         });
     };
 
+    // Format duration from minutes, e.g. "3h 20min"
+    const formatDuration = (minutes) => {
+        if (!minutes || minutes <= 0) return '0 min';
+        const h = Math.floor(minutes / 60);
+        const m = Math.round(minutes % 60);
+        if (h === 0) return `${m} min`;
+        if (m === 0) return `${h}h`;
+        return `${h}h ${m}min`;
+    };
+
+    // Format a date + time string like the Charging Summary, e.g. "Mon, 25 Jul · 5:45 AM"
+    const formatScheduleDateTime = (dateStr, timeStr) => {
+        if (!dateStr || !timeStr) return '—';
+        const [h, m] = timeStr.split(':').map(Number);
+        const [y, mo, d] = dateStr.split('-').map(Number);
+        const date = new Date(y, mo - 1, d, h, m, 0);
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const ampm = date.getHours() >= 12 ? 'PM' : 'AM';
+        const hour12 = date.getHours() % 12 || 12;
+        return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} · ${hour12}:${String(date.getMinutes()).padStart(2, '0')} ${ampm}`;
+    };
+
+    const getModeLabel = (mode) => {
+        return mode === 'start' ? 'By Start Time' : 'By Completion';
+    };
+
     return (
         <>
             {/* Save Button */}
@@ -159,29 +187,107 @@ function SavePlan({ currentState, results }) {
                         <div className="history-list">
                             {history.map(record => (
                                 <div key={record.id} className="history-item">
-                                    <div className="history-item-header">
-                                        <span className="history-model">{getModelName(record.model_id)}</span>
-                                        <button
-                                            className="history-delete-btn"
-                                            onClick={() => handleDelete(record.id)}
-                                        >
-                                            <span className="material-symbols-outlined">delete</span>
-                                        </button>
+                                    <div
+                                        className="history-item-main"
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => setExpandedId(expandedId === record.id ? null : record.id)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                setExpandedId(expandedId === record.id ? null : record.id);
+                                            }
+                                        }}
+                                    >
+                                        <div className="history-item-header">
+                                            <span className="history-model">{getModelName(record.model_id)}</span>
+                                            <span className={`history-expand-icon ${expandedId === record.id ? 'open' : ''}`}>
+                                                <span className="material-symbols-outlined">expand_more</span>
+                                            </span>
+                                        </div>
+                                        <div className="history-details">
+                                            <span className="history-pct">
+                                                {record.current_pct}% → {record.target_pct}%
+                                            </span>
+                                            <span className="history-sep">&middot;</span>
+                                            <span className="history-energy">{record.energy_kwh} kWh</span>
+                                            {record.cost_rm > 0 && (
+                                                <>
+                                                    <span className="history-sep">&middot;</span>
+                                                    <span className="history-cost">RM {record.cost_rm.toFixed(2)}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                        <div className="history-date">{formatDate(record.created_at)}</div>
                                     </div>
-                                    <div className="history-details">
-                                        <span className="history-pct">
-                                            {record.current_pct}% → {record.target_pct}%
-                                        </span>
-                                        <span className="history-sep">&middot;</span>
-                                        <span className="history-energy">{record.energy_kwh} kWh</span>
-                                        {record.cost_rm > 0 && (
-                                            <>
-                                                <span className="history-sep">&middot;</span>
-                                                <span className="history-cost">RM {record.cost_rm.toFixed(2)}</span>
-                                            </>
-                                        )}
-                                    </div>
-                                    <div className="history-date">{formatDate(record.created_at)}</div>
+
+                                    {/* Expanded detail view like Charging Summary */}
+                                    {expandedId === record.id && (
+                                        <div className="history-detail">
+                                            <div className="history-detail-header">
+                                                <span className="material-symbols-outlined history-detail-icon">summarize</span>
+                                                Charge Details
+                                            </div>
+                                            <div className="results-section">
+                                                <div className="result-item">
+                                                    <span className="result-label">
+                                                        <span className="material-symbols-outlined result-icon">tune</span>
+                                                        Charging Amps
+                                                    </span>
+                                                    <span className="result-value accent">{record.amps_used} A</span>
+                                                </div>
+                                                <div className="result-item">
+                                                    <span className="result-label">
+                                                        <span className="material-symbols-outlined result-icon">location_on</span>
+                                                        Location
+                                                    </span>
+                                                    <span className="result-value">{record.location?.name || '—'}</span>
+                                                </div>
+                                                <div className="result-item">
+                                                    <span className="result-label">
+                                                        <span className="material-symbols-outlined result-icon">battery_charging_full</span>
+                                                        Energy Needed
+                                                    </span>
+                                                    <span className="result-value">{record.energy_kwh} kWh</span>
+                                                </div>
+                                                <div className="result-item">
+                                                    <span className="result-label">
+                                                        <span className="material-symbols-outlined result-icon">timer</span>
+                                                        Charging Duration
+                                                    </span>
+                                                    <span className="result-value">{formatDuration(record.duration_minutes)}</span>
+                                                </div>
+                                                <div className="result-item">
+                                                    <span className="result-label">
+                                                        <span className="material-symbols-outlined result-icon">wb_twilight</span>
+                                                        Start Charging
+                                                    </span>
+                                                    <span className="result-value green">{formatScheduleDateTime(record.start_date, record.start_time)}</span>
+                                                </div>
+                                                <div className="result-item">
+                                                    <span className="result-label">
+                                                        <span className="material-symbols-outlined result-icon">check_circle</span>
+                                                        {record.schedule_mode === 'completion' ? 'Will Complete' : 'Ready By'}
+                                                    </span>
+                                                    <span className="result-value green">{formatScheduleDateTime(record.target_date, record.target_time)}</span>
+                                                </div>
+                                                <div className="result-item">
+                                                    <span className="result-label">
+                                                        <span className="material-symbols-outlined result-icon">schedule</span>
+                                                        Schedule Mode
+                                                    </span>
+                                                    <span className="result-value">{getModeLabel(record.schedule_mode)}</span>
+                                                </div>
+                                                <div className="result-item">
+                                                    <span className="result-label">
+                                                        <span className="material-symbols-outlined result-icon">payments</span>
+                                                        Est. Cost
+                                                    </span>
+                                                    <span className="result-value">RM {Number(record.cost_rm || 0).toFixed(2)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
