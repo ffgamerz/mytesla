@@ -118,17 +118,50 @@ function SavePlan({ currentState, results }) {
         return `${h}h ${m}min`;
     };
 
-    // Format a date + time string like the Charging Summary, e.g. "Mon, 25 Jul · 5:45 AM"
-    const formatScheduleDateTime = (dateStr, timeStr) => {
-        if (!dateStr || !timeStr) return '—';
-        const [h, m] = timeStr.split(':').map(Number);
-        const [y, mo, d] = dateStr.split('-').map(Number);
-        const date = new Date(y, mo - 1, d, h, m, 0);
+    // Format a Date object like the Charging Summary, e.g. "Mon, 25 Jul · 5:45 AM"
+    const formatDateTime = (date) => {
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const ampm = date.getHours() >= 12 ? 'PM' : 'AM';
         const hour12 = date.getHours() % 12 || 12;
         return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} · ${hour12}:${String(date.getMinutes()).padStart(2, '0')} ${ampm}`;
+    };
+
+    // Build a Date from "YYYY-MM-DD" + "HH:MM" (or null)
+    const buildDateTime = (dateStr, timeStr) => {
+        if (!dateStr || !timeStr) return null;
+        const [h, m] = timeStr.split(':').map(Number);
+        const [y, mo, d] = dateStr.split('-').map(Number);
+        if ([h, m, y, mo, d].some(isNaN)) return null;
+        return new Date(y, mo - 1, d, h, m, 0);
+    };
+
+    // Start Charging time:
+    // - 'completion' mode: start = user's chosen target minus duration
+    // - 'start' mode:      start = the stored start date/time
+    const getStartFormatted = (record) => {
+        const durationMs = (Number(record.duration_minutes) || 0) * 60 * 1000;
+        if (record.schedule_mode === 'completion') {
+            const end = buildDateTime(record.target_date, record.target_time);
+            if (!end) return '—';
+            return formatDateTime(new Date(end.getTime() - durationMs));
+        }
+        const start = buildDateTime(record.start_date, record.start_time);
+        return start ? formatDateTime(start) : '—';
+    };
+
+    // Ready By / Will Complete time:
+    // - 'completion' mode: user's chosen target
+    // - 'start' mode:      stored start plus charging duration
+    const getReadyByFormatted = (record) => {
+        const durationMs = (Number(record.duration_minutes) || 0) * 60 * 1000;
+        if (record.schedule_mode === 'start') {
+            const start = buildDateTime(record.start_date, record.start_time);
+            if (!start) return '—';
+            return formatDateTime(new Date(start.getTime() + durationMs));
+        }
+        const end = buildDateTime(record.target_date, record.target_time);
+        return end ? formatDateTime(end) : '—';
     };
 
     const getModeLabel = (mode) => {
@@ -262,14 +295,14 @@ function SavePlan({ currentState, results }) {
                                                         <span className="material-symbols-outlined result-icon">wb_twilight</span>
                                                         Start Charging
                                                     </span>
-                                                    <span className="result-value green">{formatScheduleDateTime(record.start_date, record.start_time)}</span>
+                                                    <span className="result-value green">{getStartFormatted(record)}</span>
                                                 </div>
                                                 <div className="result-item">
                                                     <span className="result-label">
                                                         <span className="material-symbols-outlined result-icon">check_circle</span>
                                                         {record.schedule_mode === 'completion' ? 'Will Complete' : 'Ready By'}
                                                     </span>
-                                                    <span className="result-value green">{formatScheduleDateTime(record.target_date, record.target_time)}</span>
+                                                    <span className="result-value green">{getReadyByFormatted(record)}</span>
                                                 </div>
                                                 <div className="result-item">
                                                     <span className="result-label">
