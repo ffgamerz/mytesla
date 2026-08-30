@@ -38,7 +38,7 @@ serve(async (req) => {
             default: return new Response(JSON.stringify({ error: 'Use: authorize, callback, vehicle-data' }), { status: 400, headers: h });
         }
     } catch (err) {
-        return new Response(JSON.stringify({ error: err.message || 'Error' }), { status: 500, headers: cors() });
+        return new Response(JSON.stringify({ error: (err as Error).message || 'Error' }), { status: 500, headers: cors() });
     }
 });
 
@@ -131,8 +131,10 @@ async function handleVehicleData(req: Request): Promise<Response> {
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
     // Helper: fetch vehicle data
+    // IMPORTANT: location_data=true is REQUIRED since firmware 2023.38+ otherwise
+    // Tesla returns an empty drive_state (no lat/lng). This restores GPS in drive_state.
     async function fetchVehicleData(token: string) {
-        return await fetch(`${API}/api/1/vehicles/${vin}/vehicle_data`, { headers: { 'Authorization': `Bearer ${token}` } });
+        return await fetch(`${API}/api/1/vehicles/${vin}/vehicle_data?location_data=true`, { headers: { 'Authorization': `Bearer ${token}` } });
     }
 
     // Try to get vehicle data (vehicle might be asleep = 408)
@@ -162,31 +164,53 @@ async function handleVehicleData(req: Request): Promise<Response> {
     const r = vd.response;
     const cs = r.charge_state || {}, vc = r.vehicle_config || {}, cl = r.climate_state || {}, vs = r.vehicle_state || {};
 
-    // --- DRIVE STATE (Location) Debug ---
-    // Tesla Fleet API sometimes returns null for drive_state.latitude/longitude.
-    // Log the raw drive_state to help diagnose.
+    // --- DRIVE STATE (Location) ---
+    // 1) Primary: drive_state from vehicle_data (requires location_data=true since fw 2023.38+)
     const ds = r.drive_state || {};
     console.log('[tesla-proxy] drive_state keys:', Object.keys(ds));
     console.log('[tesla-proxy] drive_state.latitude:', ds.latitude, 'longitude:', ds.longitude);
     console.log('[tesla-proxy] drive_state exists in response:', 'drive_state' in r);
 
-    // If drive_state is empty but vehicle_state has odometer, maybe vehicle is offline
     if (Object.keys(ds).length === 0) {
-        console.log('[tesla-proxy] WARNING: drive_state is EMPTY object - vehicle may be offline');
+        console.log('[tesla-proxy] WARNING: drive_state EMPTY even with location_data=true - trying /location endpoint');
     }
 
-    // Try alternate location source: some Tesla APIs return location under vehicle_state
+    // 2) Fallback A: some Tesla APIs return location under vehicle_state
     const altLat = vs?.latitude ?? null;
     const altLng = vs?.longitude ?? null;
     if (altLat !== null && altLng !== null) {
         console.log('[tesla-proxy] Found location in vehicle_state instead:', altLat, altLng);
     }
 
-    // Use best available location: prefer drive_state, fallback to vehicle_state
-    const finalLat = ds.latitude ?? altLat ?? null;
-    const finalLng = ds.longitude ?? altLng ?? null;
+    // 3) Fallback B: dedicated /location endpoint (used on fw 2025.2.6+ when drive_state empty)
+    let locLat: number | null = ds.latitude ?? altLat ?? null;
+    let locLng: number | null = ds.longitude ?? altLng ?? null;
+
+    if (locLat == null || locLng == null) {
+        try {
+            const lr = await fetch(`${API}/api/1/vehicles/${vin}/location`, {
+                headers: { 'Authorization': `Bearer ${at}` },
+            });
+            if (lr.ok) {
+                const ld = await lr.json();
+                const lbody = ld.response ?? ld;
+                if (lbody?.latitude != null && lbody?.longitude != null) {
+                    locLat = lbody.latitude;
+                    locLng = lbody.longitude;
+                    console.log('[tesla-proxy] Got location from /location endpoint:', locLat, locLng);
+                }
+            } else {
+                console.log('[tesla-proxy] /location endpoint returned', lr.status);
+            }
+        } catch (locErr) {
+            console.warn('[tesla-proxy] /location fallback failed:', (locErr as Error)?.message || locErr);
+        }
+    }
+
+    const finalLat = locLat ?? null;
+    const finalLng = locLng ?? null;
     console.log('[tesla-proxy] final lat/lng:', finalLat, finalLng);
-    // --- END DRIVE STATE DEBUG ---
+    // --- END DRIVE STATE ---
 
     await d.from('tesla_user_settings').update({ tesla_last_sync: new Date().toISOString() }).eq('id', user_id);
 
