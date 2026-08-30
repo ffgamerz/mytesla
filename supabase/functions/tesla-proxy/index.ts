@@ -176,7 +176,7 @@ async function handleVehicleData(req: Request): Promise<Response> {
     // IMPORTANT: location_data=true is REQUIRED since firmware 2023.38+ otherwise
     // Tesla returns an empty drive_state (no lat/lng). This restores GPS in drive_state.
     async function fetchVehicleData(token: string) {
-        return await teslaFetch(`/api/1/vehicles/${vin}/vehicle_data?location_data=true`, token);
+        return await teslaFetch(`/api/1/vehicles/${vin}/vehicle_data?location_data=true`, token, 'GET', undefined, vin);
     }
 
     // Try to get vehicle data (vehicle might be asleep = 408)
