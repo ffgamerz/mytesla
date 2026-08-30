@@ -9,7 +9,49 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const AUTH = 'https://auth.tesla.com/oauth2/v3';
-const API = 'https://fleet-api.prd.na.vn.cloud.tesla.com';
+// Tesla Fleet API regional base URLs.
+const REGION_URLS = {
+  na: 'https://fleet-api.prd.na.vn.cloud.tesla.com',
+  eu: 'https://fleet-api.prd.eu.vn.cloud.tesla.com',
+  ap: 'https://fleet-api.prd.ap.vn.cloud.tesla.com',
+  cn: 'https://fleet-api.prd.cn.vn.cloud.tesla.com',
+};
+
+// Pick the most likely region from the VIN prefix. 404 from other regions is silent,
+// so we must start with the correct region to get location data.
+//   LRW = Shanghai (China)  -> cn, then ap
+//   5YJ = USA (Fremont)     -> na
+//   XP7 = Netherlands (EU)  -> eu
+function regionOrderForVin(vin?: string | null): string[] {
+  const p = (vin || '').slice(0, 3).toUpperCase();
+  if (p === 'LRW') return ['cn', 'ap', 'na', 'eu'];
+  if (p.startsWith('5YJ')) return ['na', 'eu', 'ap', 'cn'];
+  if (p === 'XP7') return ['eu', 'na', 'ap', 'cn'];
+  // Default: try all, env override first
+  return ['na', 'eu', 'ap', 'cn'];
+}
+
+// Try each region (ordered by VIN) until one returns a non-404 response.
+async function teslaFetch(path: string, token: string, method = 'GET', body?: unknown, vin?: string | null): Promise<Response> {
+  const order = regionOrderForVin(vin);
+  const bases = (Deno.env.get('TESLA_FLEET_API_URL')
+    ? [Deno.env.get('TESLA_FLEET_API_URL')!]
+    : order.map(r => REGION_URLS[r as keyof typeof REGION_URLS]));
+  let lastErr: unknown;
+  for (const base of bases) {
+    try {
+      const res = await fetch(`${base}${path}`, {
+        method,
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+      if (res.status === 404) { lastErr = new Error(`${base} -> 404 (vehicle not in region)`); continue; }
+      console.log('[tesla-proxy] teslaFetch region hit:', base, path);
+      return res;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr ?? new Error('All Tesla regions failed');
+}
 const SU = Deno.env.get('SUPABASE_URL') || '';
 const SK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const CID = Deno.env.get('TESLA_CLIENT_ID') || '';
@@ -80,7 +122,7 @@ async function handleCallback(req: Request): Promise<Response> {
 
     let vin = null, name = null;
     try {
-        const vr = await fetch(`${API}/api/1/vehicles`, { headers: { 'Authorization': `Bearer ${at}` } });
+        const vr = await teslaFetch(`/api/1/vehicles`, at);
         const vd = await vr.json();
         if (vr.ok && vd.response?.length > 0) {
             vin = vd.response[0].vin;
@@ -134,7 +176,7 @@ async function handleVehicleData(req: Request): Promise<Response> {
     // IMPORTANT: location_data=true is REQUIRED since firmware 2023.38+ otherwise
     // Tesla returns an empty drive_state (no lat/lng). This restores GPS in drive_state.
     async function fetchVehicleData(token: string) {
-        return await fetch(`${API}/api/1/vehicles/${vin}/vehicle_data?location_data=true`, { headers: { 'Authorization': `Bearer ${token}` } });
+        return await teslaFetch(`/api/1/vehicles/${vin}/vehicle_data?location_data=true`, token);
     }
 
     // Try to get vehicle data (vehicle might be asleep = 408)
@@ -144,10 +186,7 @@ async function handleVehicleData(req: Request): Promise<Response> {
     // If vehicle is asleep (408), send wake-up command and retry
     if (vr.status === 408 || vd?.error === 'vehicle unavailable: vehicle is offline or asleep') {
         // Send wake-up command
-        await fetch(`${API}/api/1/vehicles/${vin}/wake_up`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${at}` },
-        });
+        await teslaFetch(`/api/1/vehicles/${vin}/wake_up`, at, 'POST');
 
         // Wait for vehicle to wake up (Tesla recommends 30s, but 10s often enough)
         await sleep(10000);
@@ -188,9 +227,7 @@ async function handleVehicleData(req: Request): Promise<Response> {
 
     if (locLat == null || locLng == null) {
         try {
-            const lr = await fetch(`${API}/api/1/vehicles/${vin}/location`, {
-                headers: { 'Authorization': `Bearer ${at}` },
-            });
+            const lr = await teslaFetch(`/api/1/vehicles/${vin}/location`, at);
             if (lr.ok) {
                 const ld = await lr.json();
                 const lbody = ld.response ?? ld;
