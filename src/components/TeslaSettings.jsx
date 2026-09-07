@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getUserSettings, updateUserSettings, getTeslaSettings, updateTeslaSettings, disconnectTesla, getPullFrequency, updatePullFrequency, getLatestTeslaData } from '../../supabase/client';
+import { getUserSettings, updateUserSettings, getTeslaSettings, updateTeslaSettings, disconnectTesla, getPullFrequency, updatePullFrequency, getLatestTeslaData, getSnapshotTime, updateSnapshotTime } from '../../supabase/client';
 import { getChargingEfficiency, setChargingEfficiency, resetChargingEfficiency, calibrateEfficiencyFromData } from '../utils/calibration';
 import teslaModels from '../data/teslaModels';
 
@@ -8,7 +8,7 @@ const EDGE_FUNCTION_BASE = import.meta.env.VITE_SUPABASE_URL
     ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tesla-proxy`
     : '';
 
-function TeslaSettings({ onBack, initialMessage }) {
+function TeslaSettings({ initialMessage }) {
     const { user, signOut } = useAuth();
 
     const [isConnected, setIsConnected] = useState(false);
@@ -18,6 +18,7 @@ function TeslaSettings({ onBack, initialMessage }) {
     const [message, setMessage] = useState(initialMessage || null);
     const [loading, setLoading] = useState(true);
     const [pullFrequency, setPullFrequency] = useState(15);
+    const [snapshotTime, setSnapshotTime] = useState('02:30');
     const [defaultModelId, setDefaultModelId] = useState('model3');
     const [showDisconnect, setShowDisconnect] = useState(false);
     const [showSaveVin, setShowSaveVin] = useState(false);
@@ -56,6 +57,9 @@ function TeslaSettings({ onBack, initialMessage }) {
             // Load pull frequency
             const freq = await getPullFrequency(user.id);
             setPullFrequency(freq);
+            // Load daily snapshot time
+            const snapTime = await getSnapshotTime(user.id);
+            setSnapshotTime(snapTime);
             // Load default model
             const userSettings = await getUserSettings(user.id);
             if (userSettings?.default_model_id) {
@@ -125,6 +129,18 @@ function TeslaSettings({ onBack, initialMessage }) {
         try {
             await updatePullFrequency(user.id, val);
             setMessage({ type: 'success', text: `Auto-pull frequency set to ${val} minutes.` });
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Failed: ' + err.message });
+        }
+    };
+
+    const handleSnapshotTimeChange = async (e) => {
+        const val = e.target.value; // 'HH:MM'
+        setSnapshotTime(val);
+        if (!user || !val) return;
+        try {
+            await updateSnapshotTime(user.id, val);
+            setMessage({ type: 'success', text: `Daily snapshot set to ${val} (Malaysia time).` });
         } catch (err) {
             setMessage({ type: 'error', text: 'Failed: ' + err.message });
         }
@@ -226,10 +242,6 @@ function TeslaSettings({ onBack, initialMessage }) {
                 <h1>Mad Max</h1>
                 <p>Tesla Settings</p>
             </div>
-
-            <button className="btn-back" onClick={onBack}>
-                <span className="material-symbols-outlined">arrow_back</span> Back
-            </button>
 
             <div className="card-custom">
                 <div className="card-custom-title">
@@ -499,6 +511,26 @@ function TeslaSettings({ onBack, initialMessage }) {
                             <option value={30}>30 minutes</option>
                             <option value={60}>60 minutes</option>
                         </select>
+                    </div>
+                </div>
+            )}
+
+            {/* Daily Snapshot Time Setting */}
+            {isConnected && (
+                <div className="card-custom">
+                    <div className="card-custom-title">
+                        <span className="material-symbols-outlined card-title-icon">schedule</span>
+                        Daily Snapshot Time
+                    </div>
+                    <p className="tesla-hint">Masa (Malaysia) sistem auto-pull odometer &amp; battery untuk graf Mileage. Default 02:30 — elak masa Tesla auto-update (biasanya ~3-4 AM).</p>
+                    <div className="form-group">
+                        <label className="form-label">Run daily at</label>
+                        <input
+                            type="time"
+                            className="form-control-custom"
+                            value={snapshotTime}
+                            onChange={handleSnapshotTimeChange}
+                        />
                     </div>
                 </div>
             )}

@@ -77,7 +77,8 @@ serve(async (req) => {
             case 'authorize': return await handleAuth(req);
             case 'callback': return await handleCallback(req);
             case 'vehicle-data': return await handleVehicleData(req);
-            default: return new Response(JSON.stringify({ error: 'Use: authorize, callback, vehicle-data' }), { status: 400, headers: h });
+            case 'daily-snapshot': return await handleDailySnapshot(req);
+            default: return new Response(JSON.stringify({ error: 'Use: authorize, callback, vehicle-data, daily-snapshot' }), { status: 400, headers: h });
         }
     } catch (err) {
         return new Response(JSON.stringify({ error: (err as Error).message || 'Error' }), { status: 500, headers: cors() });
@@ -147,9 +148,80 @@ async function handleVehicleData(req: Request): Promise<Response> {
     const { data: s } = await d.from('tesla_user_settings').select('*').eq('id', user_id).single();
     if (!s) return new Response(JSON.stringify({ error: 'No settings. Connect first.' }), { status: 401, headers: cors() });
 
+    const data = await pullVehicleData(s);
+
+    await d.from('tesla_user_settings').update({ tesla_last_sync: new Date().toISOString() }).eq('id', user_id);
+
+    return new Response(JSON.stringify({
+        ...data,
+        timestamp: new Date().toISOString(),
+    }), { status: 200, headers: cors() });
+}
+
+// ==========================================
+// Daily Snapshot - pull odometer/battery for all connected users
+// Called by pg_cron every day at 19:00 UTC (3:00 AM MYT)
+// Also callable with { user_id } for on-demand seeding from the Mileage page
+// ==========================================
+async function handleDailySnapshot(req: Request): Promise<Response> {
+    const d = db();
+    let body: any = {};
+    try { body = await req.json(); } catch (_) { }
+
+    let q = d.from('tesla_user_settings').select('*').eq('tesla_connected', true);
+    if (body.user_id) q = q.eq('id', body.user_id);
+    const { data: users, error } = await q;
+    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: cors() });
+
+    // Snapshot date in Malaysia time (UTC+8) so a pull at e.g. 2:30 AM MYT
+    // (18:30 UTC) lands on the correct day.
+    const snapshotDate = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+
+    // Manual seed (with user_id): always pull (upsert overwrite).
+    // Cron mode (no user_id): skip users that already have today's snapshot.
+    const manual = !!body.user_id;
+
+    const results: Array<{ user_id: string; ok: boolean; skipped?: boolean; error?: string }> = [];
+    for (const s of users || []) {
+        try {
+            if (!manual) {
+                // Skip if today's snapshot already exists (idempotent)
+                const { data: existing } = await d.from('tesla_daily_snapshots')
+                    .select('id').eq('user_id', s.id).eq('snapshot_date', snapshotDate).maybeSingle();
+                if (existing) {
+                    results.push({ user_id: s.id, ok: true, skipped: true });
+                    continue;
+                }
+            }
+
+            const data = await pullVehicleData(s);
+            await d.from('tesla_daily_snapshots').upsert({
+                user_id: s.id, snapshot_date: snapshotDate,
+                odometer: data.odometer, battery_level: data.battery_level,
+                battery_range: data.battery_range, estimated_range: data.estimated_range,
+                is_charging: data.is_charging, charge_power: data.charge_power,
+                model: data.model, trim: data.trim,
+                inside_temp: data.inside_temp, outside_temp: data.outside_temp,
+                latitude: data.latitude, longitude: data.longitude,
+            }, { onConflict: 'user_id,snapshot_date' });
+            await d.from('tesla_user_settings').update({ tesla_last_sync: new Date().toISOString() }).eq('id', s.id);
+            results.push({ user_id: s.id, ok: true });
+        } catch (e) {
+            results.push({ user_id: s.id, ok: false, error: (e as Error).message });
+        }
+    }
+
+    return new Response(JSON.stringify({ success: true, snapshot_date: snapshotDate, results }), { status: 200, headers: cors() });
+}
+
+// Shared core: refresh token, fetch vehicle data (with wake-up retry), parse.
+// Throws on error. Returns parsed data object (without timestamp).
+async function pullVehicleData(s: any) {
     const { tesla_client_id: cid, tesla_refresh_token: rt, tesla_vehicle_vin: vin } = s;
-    if (!cid || !rt) return new Response(JSON.stringify({ error: 'Missing credentials' }), { status: 400, headers: cors() });
-    if (!vin) return new Response(JSON.stringify({ error: 'No VIN. Add in Settings.' }), { status: 400, headers: cors() });
+    if (!cid || !rt) throw new Error('Missing credentials');
+    if (!vin) throw new Error('No VIN. Add in Settings.');
+
+    const d = db();
 
     // Refresh token with Fleet API scope
     const tr = await fetch(`${AUTH}/token`, {
@@ -160,14 +232,14 @@ async function handleVehicleData(req: Request): Promise<Response> {
         }),
     });
     const td = await tr.json();
-    if (!tr.ok) return new Response(JSON.stringify({ error: 'Token expired. Reconnect Tesla.' }), { status: 401, headers: cors() });
+    if (!tr.ok) throw new Error('Token expired. Reconnect Tesla.');
 
     const at = td.access_token, nrt = td.refresh_token || rt;
 
     await d.from('tesla_user_settings').update({
         tesla_access_token: at, tesla_refresh_token: nrt,
         tesla_token_expiry: new Date(Date.now() + (td.expires_in * 1000)).toISOString(),
-    }).eq('id', user_id);
+    }).eq('id', s.id);
 
     // Helper: small delay
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -197,7 +269,7 @@ async function handleVehicleData(req: Request): Promise<Response> {
     }
 
     if (!vr.ok || !vd.response) {
-        return new Response(JSON.stringify({ error: `Vehicle data error (${vr.status})`, details: vd }), { status: 200, headers: cors() });
+        throw new Error(`Vehicle data error (${vr.status})`);
     }
 
     const r = vd.response;
@@ -249,7 +321,7 @@ async function handleVehicleData(req: Request): Promise<Response> {
     console.log('[tesla-proxy] final lat/lng:', finalLat, finalLng);
     // --- END DRIVE STATE ---
 
-    await d.from('tesla_user_settings').update({ tesla_last_sync: new Date().toISOString() }).eq('id', user_id);
+    await d.from('tesla_user_settings').update({ tesla_last_sync: new Date().toISOString() }).eq('id', s.id);
 
     // Tesla Fleet API returns battery_range in miles regardless of user setting.
     // Convert to km for consistent display (1 mile = 1.609 km).
@@ -259,16 +331,20 @@ async function handleVehicleData(req: Request): Promise<Response> {
     const rangeKm = rawRange !== null ? Math.round(rawRange * 1.609 * 100) / 100 : null;
     const estRangeKm = rawEstRange !== null ? Math.round(rawEstRange * 1.609 * 100) / 100 : null;
 
-    return new Response(JSON.stringify({
+    // Odometer lives in vehicle_state (Fleet API) and is reported in MILES.
+    // Convert to km for consistency with the rest of the app.
+    const rawOdo = vs.odometer ?? r.odometer ?? null;
+    const odoKm = rawOdo !== null ? Math.round(rawOdo * 1.609 * 100) / 100 : null;
+
+    return {
         battery_level: cs.battery_level ?? null, battery_range: rangeKm,
         estimated_range: estRangeKm, charge_state: cs.charging_state ?? null,
         is_charging: cs.charging_state === 'Charging', charge_power: cs.charge_power ?? null,
         charge_voltage: cs.charge_actual_voltage ?? null, charge_amps: cs.charge_actual_amps ?? null,
-        odometer: r.odometer ?? null, locked: vs.locked ?? null, sentry_mode: vs.sentry_mode ?? null,
+        odometer: odoKm, locked: vs.locked ?? null, sentry_mode: vs.sentry_mode ?? null,
         inside_temp: cl.inside_temp ?? null, outside_temp: cl.outside_temp ?? null,
         latitude: finalLat, longitude: finalLng,
         model: vc.model ?? null, trim: vc.trim_badging ?? null,
         vin: r.vin ?? null, display_name: r.display_name ?? null,
-        timestamp: new Date().toISOString(),
-    }), { status: 200, headers: cors() });
+    };
 }

@@ -278,9 +278,6 @@ function ChargingCalculator({ onNavigateSettings }) {
                 </div>
                 <div className="header-title-row">
                     <h1>Mad Max</h1>
-                    <button className="btn-settings-icon" onClick={onNavigateSettings} title="Tesla Settings">
-                        <span className="material-symbols-outlined">settings</span>
-                    </button>
                 </div>
                 <p>Charging Calculator</p>
             </div>
@@ -649,15 +646,6 @@ function ChargingCalculator({ onNavigateSettings }) {
                 }}
                 results={results}
             />
-
-            {/* Bottom Nav Dots */}
-            {!hasCalculated && (
-                <div className="bottom-nav">
-                    <div className="bottom-nav-dot active"></div>
-                    <div className="bottom-nav-dot"></div>
-                    <div className="bottom-nav-dot"></div>
-                </div>
-            )}
 
             {/* Sign Out & User Info */}
             <div className="user-footer">

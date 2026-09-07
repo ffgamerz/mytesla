@@ -325,4 +325,95 @@ export async function updatePullFrequency(userId, minutes) {
     return data;
 }
 
+/**
+ * Get daily snapshots for a user (mileage tracking), oldest first
+ */
+export async function getDailySnapshots(userId, limit = 365) {
+    const { data, error } = await supabase
+        .from('tesla_daily_snapshots')
+        .select('*')
+        .eq('user_id', userId)
+        .order('snapshot_date', { ascending: false })
+        .limit(limit);
+
+    if (error) throw error;
+    return (data || []).reverse(); // oldest first for charting
+}
+
+/**
+ * Get today's snapshot (Malaysia time, UTC+8)
+ */
+export function getMytTodayDateStr() {
+    return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+export async function getTodaySnapshot(userId) {
+    const { data, error } = await supabase
+        .from('tesla_daily_snapshots')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('snapshot_date', getMytTodayDateStr())
+        .maybeSingle();
+
+    if (error) throw error;
+    return data;
+}
+
+/**
+ * Get snapshot time for a user ('HH:MM', MYT). Default '02:30'.
+ */
+export async function getSnapshotTime(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('tesla_user_settings')
+            .select('snapshot_time')
+            .eq('id', userId)
+            .single();
+
+        if (error && error.code === 'PGRST116') return '02:30';
+        if (error) throw error;
+        return data?.snapshot_time ?? '02:30';
+    } catch (e) {
+        console.warn('getSnapshotTime failed:', e?.message || e);
+        return '02:30';
+    }
+}
+
+/**
+ * Update snapshot time for a user ('HH:MM', MYT).
+ * Also reschedules the daily cron job to run at the new time.
+ */
+export async function updateSnapshotTime(userId, time) {
+    const { data, error } = await supabase
+        .from('tesla_user_settings')
+        .update({ snapshot_time: time })
+        .eq('id', userId)
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    // Reschedule the daily cron to fire at the new MYT time
+    const { error: rpcError } = await supabase.rpc('set_snapshot_cron', { p_time: time });
+    if (rpcError) throw new Error(`Time saved but cron reschedule failed: ${rpcError.message}`);
+
+    return data;
+}
+
+/**
+ * Trigger a daily snapshot pull for a user via the edge function.
+ * Used as fallback seeding when today's snapshot is missing.
+ * Returns { success, results } or throws.
+ */
+export async function triggerDailySnapshot(userId) {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tesla-proxy/daily-snapshot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to create daily snapshot');
+    return data;
+}
+
 export default supabase;

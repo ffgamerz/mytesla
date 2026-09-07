@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ChargingCalculator from './components/ChargingCalculator';
+import MileageTracker from './components/MileageTracker';
+import BottomNav from './components/BottomNav';
 import TeslaSettings from './components/TeslaSettings';
 import LoginPage from './components/LoginPage';
 import './styles/custom.css';
@@ -79,27 +81,40 @@ function AppContent() {
         return <LoginPage />;
     }
 
+    let pageEl;
     if (page === 'settings') {
-        return (
+        pageEl = (
             <TeslaSettings
-                onBack={() => { setPage('calculator'); setTeslaStatus(null); }}
                 initialMessage={teslaStatus}
             />
+        );
+    } else if (page === 'mileage') {
+        pageEl = (
+            <MileageTracker />
+        );
+    } else {
+        pageEl = (
+            <>
+                {teslaStatus && (
+                    <div className={`tesla-toast ${teslaStatus.type === 'error' ? 'tesla-toast-error' : 'tesla-toast-success'}`}>
+                        <span className="material-symbols-outlined">{teslaStatus.type === 'error' ? 'error' : 'check_circle'}</span>
+                        {teslaStatus.text}
+                        <button className="toast-close" onClick={() => setTeslaStatus(null)}>
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                )}
+                <ChargingCalculator
+                    onNavigateSettings={() => setPage('settings')}
+                />
+            </>
         );
     }
 
     return (
         <>
-            {teslaStatus && (
-                <div className={`tesla-toast ${teslaStatus.type === 'error' ? 'tesla-toast-error' : 'tesla-toast-success'}`}>
-                    <span className="material-symbols-outlined">{teslaStatus.type === 'error' ? 'error' : 'check_circle'}</span>
-                    {teslaStatus.text}
-                    <button className="toast-close" onClick={() => setTeslaStatus(null)}>
-                        <span className="material-symbols-outlined">close</span>
-                    </button>
-                </div>
-            )}
-            <ChargingCalculator onNavigateSettings={() => setPage('settings')} />
+            {pageEl}
+            <BottomNav active={page} onNavigate={setPage} />
         </>
     );
 }
