@@ -21,6 +21,7 @@ import {
     calcEstimatedRangeAtTarget,
     timeAgo,
 } from '../utils/calculations';
+import { getChargingEfficiency } from '../utils/calibration';
 
 const DEFAULT_MODEL = teslaModels[0]; // Model 3
 
@@ -74,6 +75,15 @@ function ChargingCalculator({ onNavigateSettings }) {
     const [manualAmps, setManualAmps] = useState(32);
     const [ampsMode, setAmpsMode] = useState('auto'); // 'auto' or 'manual'
     const [toastMsg, setToastMsg] = useState(null);
+    // Calibration efficiency (0-1) — boleh diadjust di Settings / auto-calibrate
+    const [chargingEff, setChargingEff] = useState(getChargingEfficiency);
+
+    // Reload calibration bila user ubah di Settings (event dari calibration util)
+    useEffect(() => {
+        const handler = (e) => setChargingEff(e.detail?.efficiency ?? getChargingEfficiency());
+        window.addEventListener('tesla-calibration-changed', handler);
+        return () => window.removeEventListener('tesla-calibration-changed', handler);
+    }, []);
     const [teslaCoordinate, setTeslaCoordinate] = useState(null);
     const [locationSource, setLocationSource] = useState(null);
 
@@ -119,15 +129,16 @@ function ChargingCalculator({ onNavigateSettings }) {
             const requiredAmps = calcRequiredAmps(
                 energyNeeded,
                 hoursAvailable,
-                location.voltage
+                location.voltage,
+                chargingEff
             );
 
             const actualAmps = Math.min(requiredAmps, safeMaxAmps);
             const actualPower = calcChargingPower(location.voltage, actualAmps);
-            const actualDuration = calcChargingTime(energyNeeded, actualPower);
+            const actualDuration = calcChargingTime(energyNeeded, actualPower, chargingEff);
             const schedule = calcChargeSchedule(completionDate, completionTime, actualDuration);
 
-            const totalCost = calcCost(energyNeeded, location.rate);
+            const totalCost = calcCost(energyNeeded, location.rate, chargingEff);
 
             setResults({
                 mode: 'completion',
@@ -154,7 +165,7 @@ function ChargingCalculator({ onNavigateSettings }) {
             }
 
             const actualPower = calcChargingPower(location.voltage, clampedAmps);
-            const actualDuration = calcChargingTime(energyNeeded, actualPower);
+            const actualDuration = calcChargingTime(energyNeeded, actualPower, chargingEff);
 
             // Calculate completion time from start date/time + duration
             const [sh, smin] = startTime.split(':').map(Number);
@@ -169,7 +180,7 @@ function ChargingCalculator({ onNavigateSettings }) {
 
             const endDateTime = new Date(startDateTime.getTime() + actualDuration * 60 * 60 * 1000);
 
-            const totalCost = calcCost(energyNeeded, location.rate);
+            const totalCost = calcCost(energyNeeded, location.rate, chargingEff);
 
             setResults({
                 mode: 'start',
@@ -186,7 +197,7 @@ function ChargingCalculator({ onNavigateSettings }) {
         }
 
         setHasCalculated(true);
-    }, [energyNeeded, scheduleMode, completionDate, completionTime, startDate, startTime, manualAmps, ampsMode, location]);
+    }, [energyNeeded, scheduleMode, completionDate, completionTime, startDate, startTime, manualAmps, ampsMode, location, chargingEff]);
 
     // Auto-calculate on input changes
     useEffect(() => {

@@ -51,6 +51,7 @@ export function calcEnergyNeeded(options) {
     return Math.round(batteryCapacity * (targetPct - currentPct) / 100 * 100) / 100;
 }
 
+
 /**
  * Get estimated range at target percentage based on Tesla actual data
  * @param {number} currentRange - Current battery range in km from Tesla
@@ -79,10 +80,10 @@ export function calcChargingPower(voltage, amperage) {
  * @param {number} powerKw - Charging power in kW
  * @returns {number} Time in hours
  */
-export function calcChargingTime(energyKwh, powerKw) {
+export function calcChargingTime(energyKwh, powerKw, efficiency = CHARGING_EFFICIENCY) {
     if (powerKw <= 0) return 0;
     // Ambil kira efficiency loss AC charging (dinding -> bateri)
-    return energyKwh / (powerKw * CHARGING_EFFICIENCY);
+    return energyKwh / (powerKw * efficiency);
 }
 
 /**
@@ -92,10 +93,10 @@ export function calcChargingTime(energyKwh, powerKw) {
  * @param {number} voltage - Voltage (V)
  * @returns {number} Required amperage in Amps
  */
-export function calcRequiredAmps(energyKwh, hoursAvailable, voltage) {
+export function calcRequiredAmps(energyKwh, hoursAvailable, voltage, efficiency = CHARGING_EFFICIENCY) {
     if (hoursAvailable <= 0 || voltage <= 0) return 0;
     // Ambil kira efficiency loss supaya amps yang disyorkan cukup untuk siap tepat masa
-    const powerKw = energyKwh / (hoursAvailable * CHARGING_EFFICIENCY);
+    const powerKw = energyKwh / (hoursAvailable * efficiency);
     const amps = (powerKw * 1000) / voltage;
     return Math.round(amps * 10) / 10; // Round to 1 decimal
 }
@@ -106,9 +107,9 @@ export function calcRequiredAmps(energyKwh, hoursAvailable, voltage) {
  * @param {number} ratePerKwh - Cost per kWh in RM
  * @returns {number} Total cost in RM
  */
-export function calcCost(energyKwh, ratePerKwh) {
+export function calcCost(energyKwh, ratePerKwh, efficiency = CHARGING_EFFICIENCY) {
     // TNB bil berdasarkan energi dari dinding (termasuk loss charging)
-    return (energyKwh / CHARGING_EFFICIENCY) * ratePerKwh;
+    return (energyKwh / efficiency) * ratePerKwh;
 }
 
 /**
