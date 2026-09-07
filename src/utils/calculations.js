@@ -4,11 +4,19 @@
  * Formula:
  * 1. Energy Needed (kWh) = Battery Capacity × (Target% - Current%) / 100
  * 2. Charging Power (kW) = Voltage (V) × Amperage (A) / 1000
- * 3. Charging Time (hours) = Energy Needed (kWh) / Charging Power (kW)
- * 
+ * 3. Charging Time (hours) = Energy Needed (kWh) / (Charging Power (kW) × Efficiency)
+ *
  * Reverse: Given target time, calculate required amperage
- * Required Amps = (Energy Needed / Time Available) × 1000 / Voltage
+ * Required Amps = (Energy Needed / (Time Available × Efficiency)) × 1000 / Voltage
+ *
+ * Calibration (2026-09-07, data sebenar Model 3 Highland RWD):
+ * 31% / 60 kWh / 240V / 17A -> Tesla app anggar 11j 20m.
+ * Formula tanpa loss: 10j 06m. Dengan efficiency 0.90: 11j 16m (menghampiri Tesla).
  */
+
+// Efficiency pengecasan AC (dinding -> bateri) termasuk loss onboard charger.
+// Dicapatikan dari Tesla app: ~10% loss pada AC charging.
+export const CHARGING_EFFICIENCY = 0.9;
 
 /**
  * Calculate energy needed to charge using actual battery range from Tesla
@@ -73,7 +81,8 @@ export function calcChargingPower(voltage, amperage) {
  */
 export function calcChargingTime(energyKwh, powerKw) {
     if (powerKw <= 0) return 0;
-    return energyKwh / powerKw;
+    // Ambil kira efficiency loss AC charging (dinding -> bateri)
+    return energyKwh / (powerKw * CHARGING_EFFICIENCY);
 }
 
 /**
@@ -85,7 +94,8 @@ export function calcChargingTime(energyKwh, powerKw) {
  */
 export function calcRequiredAmps(energyKwh, hoursAvailable, voltage) {
     if (hoursAvailable <= 0 || voltage <= 0) return 0;
-    const powerKw = energyKwh / hoursAvailable;
+    // Ambil kira efficiency loss supaya amps yang disyorkan cukup untuk siap tepat masa
+    const powerKw = energyKwh / (hoursAvailable * CHARGING_EFFICIENCY);
     const amps = (powerKw * 1000) / voltage;
     return Math.round(amps * 10) / 10; // Round to 1 decimal
 }
@@ -97,7 +107,8 @@ export function calcRequiredAmps(energyKwh, hoursAvailable, voltage) {
  * @returns {number} Total cost in RM
  */
 export function calcCost(energyKwh, ratePerKwh) {
-    return energyKwh * ratePerKwh;
+    // TNB bil berdasarkan energi dari dinding (termasuk loss charging)
+    return (energyKwh / CHARGING_EFFICIENCY) * ratePerKwh;
 }
 
 /**
